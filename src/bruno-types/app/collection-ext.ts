@@ -120,6 +120,7 @@ export interface AppItem extends Item {
   /** File size in MB (for large files) */
   size?: number;
   error?: { message: string } | null;
+  errorSource?: string | null;
 }
 
 export interface AppCollection extends Omit<Collection, 'items'> {

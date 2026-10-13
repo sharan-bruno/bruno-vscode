@@ -16,6 +16,13 @@ import {
   deleteItemInCollectionByPathname,
   getUniqueTagsFromItems
 } from 'utils/collections';
+import type { ScriptErrorPhase } from '@bruno-types';
+import {
+  SCRIPT_ERROR_PHASES,
+  SCRIPT_ERROR_FIELDS,
+  scriptErrorMessageField,
+  scriptErrorContextField
+} from '@bruno-types';
 import { getSubdirectoriesFromRoot } from 'utils/common/platform';
 import { uuid, generateUidBasedOnHash } from 'utils/common';
 import { splitOnFirst, parsePathParams } from 'utils/url';
@@ -171,6 +178,10 @@ const wsStatusCodes: Record<number, string> = {
   1014: 'BAD_GATEWAY', 1015: 'TLS_HANDSHAKE'
 };
 
+const SCRIPT_EXECUTION_PHASES: Record<string, ScriptErrorPhase> = Object.fromEntries(
+  SCRIPT_ERROR_PHASES.map(({ phase, scriptType }) => [`${scriptType}-script-execution`, phase])
+);
+
 const initialState: CollectionsState = {
   collections: [],
   collectionSortOrder: 'default',
@@ -238,6 +249,30 @@ const getItemSeq = (data: any, fallback?: number): number => {
   const seq = data?.seq ?? (data as any)?.meta?.seq;
   const num = typeof seq === 'number' ? seq : Number(seq);
   return Number.isFinite(num) && num >= 1 ? num : (fallback ?? 1);
+};
+
+const applyAddFilePayloadToItem = (item: AppItem, payload: CollectionAddFileEventPayload) => {
+  const { meta, data, partial, loading, size, error } = payload;
+  const isHydrated = !item.partial && item.request !== undefined;
+  const keepHydrated = partial === true && !error && isHydrated;
+
+  item.name = data?.name;
+  item.type = data?.type;
+  item.seq = getItemSeq(data, item.seq);
+  item.tags = (data as any)?.tags;
+  item.filename = meta.name;
+  item.pathname = meta.pathname;
+  item.size = size;
+
+  if (keepHydrated) return;
+
+  item.request = data?.request;
+  item.settings = data?.settings;
+  item.examples = (data as any)?.examples;
+  item.app = (data as any)?.app;
+  item.partial = partial;
+  item.loading = loading;
+  item.error = error;
 };
 
 const ensureFolderRootDraft = (item: AppItem) => {
@@ -616,7 +651,7 @@ export const collectionsSlice = createSlice({
     },
 
     updateRequestMethod: (state, action: PayloadAction<UpdateRequestMethodPayload>) => {
-      const { collectionUid, itemUid, method } = action.payload;
+      const { collectionUid, itemUid, method, methodType } = action.payload;
       const collection = findCollectionByUid(state.collections, collectionUid);
       if (collection) {
         const item = findItemInCollection(collection, itemUid);
@@ -624,6 +659,7 @@ export const collectionsSlice = createSlice({
           const draft = ensureDraft(item);
           if (draft.request) {
             (draft.request as { method?: string }).method = method;
+            (draft.request as { methodType?: string }).methodType = methodType;
           }
         }
       }
@@ -1583,7 +1619,9 @@ export const collectionsSlice = createSlice({
       const collection = findCollectionByUid(state.collections, collectionUid);
       if (collection) {
         collection.items = collection.items || [];
-        collection.items.push(item);
+        if (!collection.items.some((i: any) => i.uid === item.uid)) {
+          collection.items.push(item);
+        }
       }
     },
 
@@ -1689,25 +1727,8 @@ export const collectionsSlice = createSlice({
       if (meta.name !== 'folder.bru') {
         const currentItem = find(currentSubItems, (i) => i.uid === data?.uid);
         if (currentItem) {
-          // Preserve existing draft and response if they exist (don't overwrite unsaved changes)
-          const existingDraft = currentItem.draft;
-          const existingResponse = currentItem.response;
-          currentItem.name = data?.name;
-          currentItem.type = data?.type;
-          currentItem.seq = getItemSeq(data, currentItem.seq);
-          currentItem.tags = (data as any)?.tags;
-          currentItem.request = data?.request;
-          currentItem.filename = meta.name;
-          currentItem.pathname = meta.pathname;
-          currentItem.settings = data?.settings;
-          currentItem.examples = (data as any)?.examples;
-          currentItem.partial = partial;
-          currentItem.loading = loading;
-          currentItem.size = size;
-          currentItem.error = error;
-          // Restore preserved draft and response
-          if (existingDraft) currentItem.draft = existingDraft;
-          if (existingResponse) currentItem.response = existingResponse;
+          // Draft and response live outside the payload's fields, so an update leaves them intact.
+          applyAddFilePayloadToItem(currentItem, action.payload);
         } else {
           currentSubItems.push({
             uid: data?.uid as UID,
@@ -1718,6 +1739,7 @@ export const collectionsSlice = createSlice({
             request: data?.request,
             settings: data?.settings,
             examples: (data as any)?.examples,
+            app: (data as any)?.app,
             filename: meta.name,
             pathname: meta.pathname,
             draft: null,
@@ -1818,23 +1840,7 @@ export const collectionsSlice = createSlice({
         if (meta.name !== 'folder.bru') {
           const currentItem = find(currentSubItems, (i) => i.uid === data?.uid);
           if (currentItem) {
-            const existingDraft = currentItem.draft;
-            const existingResponse = currentItem.response;
-            currentItem.name = data?.name;
-            currentItem.type = data?.type;
-            currentItem.seq = getItemSeq(data, currentItem.seq);
-            currentItem.tags = (data as any)?.tags;
-            currentItem.request = data?.request;
-            currentItem.filename = meta.name;
-            currentItem.pathname = meta.pathname;
-            currentItem.settings = data?.settings;
-            currentItem.examples = (data as any)?.examples;
-            currentItem.partial = partial;
-            currentItem.loading = loading;
-            currentItem.size = size;
-            currentItem.error = error;
-            if (existingDraft) currentItem.draft = existingDraft;
-            if (existingResponse) currentItem.response = existingResponse;
+            applyAddFilePayloadToItem(currentItem, payload);
           } else {
             currentSubItems.push({
               uid: data?.uid as UID,
@@ -1845,6 +1851,7 @@ export const collectionsSlice = createSlice({
               request: data?.request,
               settings: data?.settings,
               examples: (data as any)?.examples,
+              app: (data as any)?.app,
               filename: meta.name,
               pathname: meta.pathname,
               draft: null,
@@ -1913,6 +1920,7 @@ export const collectionsSlice = createSlice({
           existingItem.request = data?.request;
           existingItem.settings = data?.settings;
           existingItem.examples = (data as any)?.examples;
+          existingItem.app = (data as any)?.app;
           existingItem.filename = meta.name;
           existingItem.pathname = meta.pathname;
           existingItem.partial = partial;
@@ -2023,6 +2031,7 @@ export const collectionsSlice = createSlice({
       }
 
       item.response = response;
+      item.errorSource = (response as { errorSource?: string } | null)?.errorSource || null;
       item.requestState = 'received';
       item.loading = false;
 
@@ -2262,6 +2271,7 @@ export const collectionsSlice = createSlice({
           const item = runnerResult.items.findLast((i: any) => i.uid === request.uid);
           if (item) {
             item.error = action.payload.error;
+            item.errorSource = action.payload.errorSource || null;
             item.responseReceived = action.payload.responseReceived;
             item.status = 'error';
           }
@@ -2275,24 +2285,12 @@ export const collectionsSlice = createSlice({
           }
         }
 
-        if (type === 'post-response-script-execution' && request) {
+        const scriptPhase = SCRIPT_EXECUTION_PHASES[type as string];
+        if (scriptPhase && request) {
           const item = runnerResult.items.findLast((i: any) => i.uid === request.uid);
           if (item) {
-            item.postResponseScriptErrorMessage = action.payload.errorMessage;
-          }
-        }
-
-        if (type === 'test-script-execution' && request) {
-          const item = runnerResult.items.findLast((i: any) => i.uid === request.uid);
-          if (item) {
-            item.testScriptErrorMessage = action.payload.errorMessage;
-          }
-        }
-
-        if (type === 'pre-request-script-execution' && request) {
-          const item = runnerResult.items.findLast((i: any) => i.uid === request.uid);
-          if (item) {
-            item.preRequestScriptErrorMessage = action.payload.errorMessage;
+            item[scriptErrorMessageField(scriptPhase)] = action.payload.errorMessage || null;
+            item[scriptErrorContextField(scriptPhase)] = action.payload.errorContext || null;
           }
         }
       }
@@ -2304,20 +2302,26 @@ export const collectionsSlice = createSlice({
       if (collection) {
         const item = findItemInCollection(collection, itemUid);
         if (item) {
+          const { type, requestSent } = action.payload as { type?: string; requestSent?: Record<string, unknown> };
+
+          // Script phases report after the request finished, so resetting the state here would
+          // restart the loading overlay.
+          const scriptPhase = SCRIPT_EXECUTION_PHASES[type as string];
+          if (scriptPhase) {
+            const { errorMessage, errorContext } = action.payload as { errorMessage?: string | null; errorContext?: unknown };
+            (item as any)[scriptErrorMessageField(scriptPhase)] = errorMessage || null;
+            (item as any)[scriptErrorContextField(scriptPhase)] = errorContext || null;
+            return;
+          }
+
           // WS/gRPC use their own event-driven reducers for state management
           // They should never show the loading overlay (requestState = 'sending')
           const isStreamingRequest = item.type === 'ws-request' || item.type === 'grpc-request';
           item.requestState = isStreamingRequest ? null : 'sending';
 
-          const { type, requestSent } = action.payload as { type?: string; requestSent?: Record<string, unknown> };
           if (type === 'request-sent' && requestSent) {
             item.requestSent = requestSent;
           }
-
-          (item as any).testResults = [];
-          (item as any).assertionResults = [];
-          (item as any).preRequestTestResults = [];
-          (item as any).postResponseTestResults = [];
         }
       }
     },
@@ -2727,6 +2731,16 @@ export const collectionsSlice = createSlice({
       if (collection) {
         const item = findItemInCollection(collection, itemUid);
         if (item) {
+          SCRIPT_ERROR_FIELDS.forEach((field) => {
+            (item as any)[field] = null;
+          });
+          item.errorSource = null;
+
+          (item as any).testResults = [];
+          (item as any).assertionResults = [];
+          (item as any).preRequestTestResults = [];
+          (item as any).postResponseTestResults = [];
+
           // WS/gRPC use their own event-driven reducers for state management
           // They should never show the loading overlay
           const isStreamingRequest = item.type === 'ws-request' || item.type === 'grpc-request';

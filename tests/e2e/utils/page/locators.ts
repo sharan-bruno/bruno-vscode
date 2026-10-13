@@ -10,21 +10,80 @@ export type FrameLike = Frame | Page | Locator;
 
 export const buildCommonLocators = (frame: FrameLike) => ({
   sidebar: {
-    collectionName: (name: string) =>
+    collectionName: (name: string | RegExp) =>
       frame.getByTestId('sidebar-collection-row').filter({ hasText: name }),
+    collectionById: (name: string) =>
+      frame
+        .locator(`#collection-${name.replace(/\s+/g, '-').toLowerCase()}`)
+        .getByTestId('sidebar-collection-row'),
     collectionItem: (name: string) =>
-      frame.getByTestId('sidebar-collection-item-row').filter({ hasText: name })
+      frame.getByTestId('sidebar-collection-item-row').filter({ hasText: name }),
+    folderChevron: () => frame.getByTestId('folder-chevron'),
+    addMenu: () => frame.getByTestId('collections-header-add-menu'),
+    addMenuCreate: () => frame.getByTestId('collections-header-add-menu-create'),
+    openCollectionButton: () => frame.getByTestId('collections-header-add-menu-open'),
+    addMenuImport: () => frame.getByTestId('collections-header-add-menu-import'),
+    actionsMenu: () => frame.getByTestId('collection-actions'),
+    actionsItem: (id: string) => frame.getByTestId(`collection-actions-${id}`)
+  },
+  importCollection: {
+    container: () => frame.getByTestId('import-collection-container'),
+    fileInput: () => frame.getByTestId('import-file-input'),
+    search: () => frame.getByTestId('import-search'),
+    selectAll: () => frame.getByTestId('import-select-all'),
+    selectedCount: () => frame.getByTestId('import-selected-count'),
+    rows: () => frame.getByTestId('import-collection-row'),
+    rowCheckbox: () => frame.getByTestId('import-collection-checkbox'),
+    location: () => frame.getByTestId('import-collection-location'),
+    browse: () => frame.getByTestId('import-browse-button'),
+    submit: () => frame.getByTestId('import-submit'),
+    progressSummary: () => frame.getByTestId('import-progress-summary'),
+    close: () => frame.getByTestId('import-close')
+  },
+  cloneCollection: {
+    container: () => frame.locator('.clone-container'),
+    nameInput: () => frame.locator('#name'),
+    locationInput: () => frame.locator('#location'),
+    browseButton: () => frame.locator('.browse-btn'),
+    submit: () => frame.locator('button[type="submit"]').filter({ hasText: 'Clone Collection' })
   },
   collectionSettings: {
     container: () => frame.getByTestId('collection-settings'),
     // Overview → Requests line, e.g. "2 requests in collection".
     requestsInfo: () => frame.getByTestId('collection-requests-count'),
-    requestsNotLoaded: () => frame.getByTestId('collection-requests-not-loaded')
+    requestsNotLoaded: () => frame.getByTestId('collection-requests-not-loaded'),
+    saveButton: () => frame.getByTestId('collection-settings-save')
+  },
+  environments: {
+    // Environment picker in the collection toolbar.
+    selectorTrigger: () => frame.getByTestId('environment-selector-trigger'),
+    // Names shown on the trigger; absent while nothing is selected.
+    activeName: () => frame.getByTestId('active-collection-environment'),
+    activeGlobalName: () => frame.getByTestId('active-global-environment'),
+    inactiveLabel: () => frame.getByTestId('no-active-environment'),
+    dropdownItem: (name: string) =>
+      frame.getByTestId('environment-dropdown-item').filter({ hasText: name }),
+    dropdownItems: () => frame.getByTestId('environment-dropdown-item'),
+    noEnvironmentOption: () => frame.getByTestId('environment-list-no-environment'),
+    emptyState: () => frame.getByTestId('environment-list-empty-state'),
+    configureButton: () => frame.getByTestId('environment-configure-button'),
+    settingsList: () => frame.getByTestId('environments-list'),
+    settingsItem: (name: string) =>
+      frame.getByTestId('environment-item').filter({ hasText: name }),
+    activeCheckmark: (name: string) =>
+      frame.getByTestId('environment-item').filter({ hasText: name }).getByTestId('environment-active-checkmark'),
+    scopeTab: (scope: 'collection' | 'global') => frame.getByTestId(`env-tab-${scope}`),
+    createEnvironment: () => frame.getByTestId('create-environment'),
+    nameInput: () => frame.getByTestId('environment-name'),
+    confirmCreate: () => frame.getByTestId('modal-confirm-button'),
+    newVarNameInput: () => frame.getByTestId('env-var-name-new'),
+    varValueEditor: (name: string) => frame.getByTestId(`env-var-row-${name}`).locator('.CodeMirror'),
+    varSecretCheckbox: (name: string) => frame.getByTestId(`env-var-secret-${name}`),
+    save: () => frame.getByTestId('save-env')
   },
   requestUrl: {
     editor: () => frame.locator('#request-url'),
-    // A `:param` token highlighted in the URL editor.
-    pathParamToken: (name: string) =>
+    highlightedToken: (name: string) =>
       frame
         .locator('#request-url .CodeMirror span.cm-variable-valid, #request-url .CodeMirror span.cm-variable-invalid')
         .filter({ hasText: name })
@@ -32,8 +91,10 @@ export const buildCommonLocators = (frame: FrameLike) => ({
   },
   // Var-info hover popover shown over a highlighted token.
   varPopover: {
-    container: () => frame.locator('.CodeMirror-brunoVarInfo'),
-    editableDisplay: () => frame.locator('.CodeMirror-brunoVarInfo .var-value-editable-display'),
+    // A dismissed popover lingers for its fade, so a re-hover can briefly leave two.
+    all: () => frame.locator('.CodeMirror-brunoVarInfo'),
+    container: () => frame.locator('.CodeMirror-brunoVarInfo').last(),
+    editableDisplay: () => frame.locator('.CodeMirror-brunoVarInfo').last().locator('.var-value-editable-display'),
     editor: () => frame.locator('.CodeMirror-brunoVarInfo .var-value-editor .CodeMirror'),
     editorFocused: () => frame.locator('.CodeMirror-brunoVarInfo .var-value-editor .CodeMirror-focused'),
     editorLine: () => frame.locator('.CodeMirror-brunoVarInfo .var-value-editor .CodeMirror-line').first()
@@ -47,6 +108,26 @@ export const buildCommonLocators = (frame: FrameLike) => ({
         .locator('.CodeMirror-line')
         .first()
   },
+  // The "+" transient-request menu on a collection row.
+  newRequestMenu: {
+    addButton: (collectionName: string) =>
+      frame
+        .getByTestId('sidebar-collection-row')
+        .filter({ hasText: collectionName })
+        .getByTestId('collection-new-request'),
+    // Menu option by request type: http | graphql | grpc | ws.
+    option: (type: string) => frame.getByTestId(`collection-new-request-new-${type}`)
+  },
+  // VS Code workbench UI (not a webview) — pass the page to the factory.
+  workbench: {
+    editorTab: (title: string) => frame.locator('.tabs-container .tab').filter({ hasText: title }),
+    editorTabClose: (title: string) =>
+      frame.locator('.tabs-container .tab').filter({ hasText: title }).locator('.tab-actions .action-label'),
+    quickInputBox: () => frame.locator('.quick-input-widget .quick-input-box input'),
+    notificationToasts: () => frame.locator('.notifications-toasts .notification-toast'),
+    getNotificationToastByText: (text: string) =>
+      frame.locator('.notifications-toasts .notification-toast').filter({ hasText: text })
+  },
   // New Request panel form.
   newRequest: {
     typeOption: (type: string) => frame.locator('.request-type-option').filter({ hasText: type }),
@@ -58,7 +139,11 @@ export const buildCommonLocators = (frame: FrameLike) => ({
   },
   // Request-editor tabs (Params / Body / Headers / Auth / Vars …).
   tabs: {
-    byKey: (key: string) => frame.locator(`div[role="tab"].${key}`),
+    // Request-pane tab; the response pane reuses keys like `headers`.
+    byKey: (key: string) => {
+      const pane = frame.getByTestId('request-pane');
+      return pane.getByTestId(`responsive-tab-${key}`).or(pane.getByTestId(`request-tab-${key}`));
+    },
     byText: (text: string) => frame.locator('div[role="tab"]').filter({ hasText: text }),
     more: () => frame.locator('.more-tabs')
   },
@@ -69,7 +154,12 @@ export const buildCommonLocators = (frame: FrameLike) => ({
     firstTableRows: () => frame.getByTestId('editable-table').first().locator('tbody tr'),
     columnNameEditor: () => frame.getByTestId('column-name').locator('.CodeMirror'),
     columnNameInput: () => frame.getByTestId('column-name').locator('input'),
-    columnValueEditor: () => frame.getByTestId('column-value').locator('.CodeMirror')
+    columnValueEditor: () => frame.getByTestId('column-value').locator('.CodeMirror'),
+    columnCheckbox: () => frame.getByTestId('column-checkbox')
+  },
+  varsTable: {
+    rows: (scope: 'request' | 'collection' | 'folder', kind: 'req' | 'res' = 'req') =>
+      frame.getByTestId(`${scope}-vars-${kind}`).locator('tbody tr')
   },
   auth: {
     modeSelector: () => frame.locator('.auth-mode-selector'),
@@ -79,6 +169,14 @@ export const buildCommonLocators = (frame: FrameLike) => ({
     modeSelector: () => frame.locator('.body-mode-selector'),
     modeOption: (name: string) => frame.getByText(name, { exact: true }),
     editor: () => frame.locator('.CodeMirror-wrap')
+  },
+  // Body-mode dropdown addressed by test id, plus the File / Binary row controls.
+  requestBody: {
+    modeSelector: () => frame.getByTestId('body-mode'),
+    modeOption: (mode: string) => frame.getByTestId(`body-mode-${mode}`),
+    addFile: () => frame.getByTestId('body-file-add'),
+    selectFile: () => frame.getByTestId('file-picker-button').first(),
+    selectedFileName: () => frame.getByTestId('file-picker-file-name').first()
   },
   oauth2: {
     authModeSelector: () => frame.getByTestId('oauth2-auth-mode-selector'),
@@ -93,16 +191,24 @@ export const buildCommonLocators = (frame: FrameLike) => ({
     variablesEditor: () => frame.locator('.CodeMirror-wrap').first()
   },
   grpc: {
+    queryUrlContainer: () => frame.getByTestId('grpc-query-url-container'),
     protoDropdownIcon: () => frame.getByTestId('grpc-proto-file-dropdown-icon'),
     browseButton: () => frame.locator('.browse-button').filter({ hasText: 'Browse' }),
     modeToggleLabel: () => frame.getByTestId('grpc-mode-toggle').locator('label[for="toggle-switch"]'),
     methodDropdownTrigger: () => frame.getByTestId('grpc-method-dropdown-trigger'),
+    methodsList: () => frame.getByTestId('grpc-methods-list'),
+    methodsSearchInput: () => frame.getByTestId('grpc-methods-search-input'),
+    methodItems: () => frame.getByTestId('grpc-method-item'),
     methodItem: (text: string) => frame.getByTestId('grpc-method-item').filter({ hasText: text }),
+    methodsEmptyState: () => frame.getByTestId('grpc-methods-empty-state'),
     selectedMethodName: () => frame.getByTestId('selected-grpc-method-name'),
     messageEditor: () => frame.getByTestId('grpc-messages-container').locator('.CodeMirror-wrap').first(),
+    messages: () => frame.getByTestId('grpc-messages-container').locator('.message-container'),
+    addMessageButton: () => frame.getByTestId('grpc-add-message-button'),
     sendRequestButton: () => frame.getByTestId('grpc-send-request-button'),
     responseStatusCode: () => frame.getByTestId('grpc-response-status-code'),
-    responseContent: () => frame.getByTestId('grpc-response-content')
+    responseContent: () => frame.getByTestId('grpc-response-content'),
+    errorMessage: () => frame.getByTestId('grpc-response-content').locator('.error-message')
   },
   // Modal that asks the user for {{?prompt}} values before a request is sent.
   promptVariables: {
@@ -114,7 +220,20 @@ export const buildCommonLocators = (frame: FrameLike) => ({
   },
   response: {
     statusCode: () => frame.getByTestId('response-status-code'),
-    previewContainer: () => frame.getByTestId('response-preview-container')
+    previewContainer: () => frame.getByTestId('response-preview-container'),
+    body: () => frame.getByTestId('response-status-code').locator('..'),
+    error: () => frame.getByTestId('response-error')
+  },
+  clientCerts: {
+    emptyMessage: () => frame.getByText('No client certificates added'),
+    rows: () => frame.getByTestId('client-cert-row'),
+    domainInput: () => frame.getByTestId('client-cert-domain'),
+    pfxRadio: () => frame.getByTestId('client-cert-type-pfx'),
+    filePicker: (field: string) => frame.getByTestId(`client-cert-file-${field}`),
+    pickedFile: (field: string) => frame.getByTestId(`client-cert-file-name-${field}`),
+    passphraseEditor: () => frame.getByTestId('client-cert-passphrase').locator('.CodeMirror'),
+    addButton: () => frame.getByTestId('add-client-cert'),
+    saveButton: () => frame.getByTestId('collection-settings-save')
   },
   // A dropdown menu item, by its visible text.
   dropdownItem: (text: string) => frame.locator('.dropdown-item').filter({ hasText: text }),
@@ -126,6 +245,7 @@ export const buildCommonLocators = (frame: FrameLike) => ({
     // Strip shown once the socket is connected.
     connectionStatusStrip: () => frame.locator('.connection-status-strip'),
     // Text of an incoming message in the WS response pane.
-    incomingMessage: () => frame.locator('.ws-message.ws-incoming .message-content')
+    incomingMessage: () => frame.locator('.ws-message.ws-incoming .message-content'),
+    errorMessage: () => frame.locator('.ws-message.ws-error .message-content')
   }
 });

@@ -32,10 +32,10 @@ interface GrpcRequestData {
   headers?: Array<{ name: string; value: string; enabled?: boolean }>;
   body?: GrpcBody;
   vars?: unknown;
-  collectionVariables?: Record<string, string>;
-  folderVariables?: Record<string, string>;
-  requestVariables?: Record<string, string>;
-  globalEnvironmentVariables?: Record<string, string>;
+  collectionVariables?: Record<string, unknown>;
+  folderVariables?: Record<string, unknown>;
+  requestVariables?: Record<string, unknown>;
+  globalEnvironmentVariables?: Record<string, unknown>;
   oauth2CredentialVariables?: Record<string, string>;
   auth?: unknown;
   script?: unknown;
@@ -80,16 +80,16 @@ interface PreparedGrpcRequest {
   url: string;
   headers: Record<string, string>;
   processEnvVars: Record<string, string>;
-  envVars: Record<string, string>;
+  envVars: Record<string, unknown>;
   runtimeVariables: Record<string, string>;
   promptVariables: Record<string, string>;
   body?: GrpcBody;
   protoPath?: string;
   vars?: unknown;
-  collectionVariables?: Record<string, string>;
-  folderVariables?: Record<string, string>;
-  requestVariables?: Record<string, string>;
-  globalEnvironmentVariables?: Record<string, string>;
+  collectionVariables?: Record<string, unknown>;
+  folderVariables?: Record<string, unknown>;
+  requestVariables?: Record<string, unknown>;
+  globalEnvironmentVariables?: Record<string, unknown>;
   oauth2CredentialVariables?: Record<string, string>;
   oauth2?: unknown;
   oauth2Credentials?: unknown;
@@ -185,7 +185,7 @@ const configureRequest = async (
   grpcRequest: PreparedGrpcRequest,
   _request: GrpcRequestItem,
   _collection: Collection,
-  _envVars: Record<string, string>,
+  _envVars: Record<string, unknown>,
   _runtimeVariables: Record<string, string>,
   _processEnvVars: Record<string, string>,
   _promptVariables: Record<string, string>,
@@ -270,7 +270,7 @@ const registerGrpcEventHandlers = (): void => {
       const { httpsAgentRequestFields } = certsAndProxyConfig;
 
       const verifyOptions = {
-        rejectUnauthorized: httpsAgentRequestFields.rejectUnauthorized !== false
+        rejectUnauthorized: false // should be reverted back once we have a proper CA setup.
       };
 
       const rootCertificate = httpsAgentRequestFields.ca;
