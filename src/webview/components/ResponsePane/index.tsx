@@ -13,7 +13,7 @@ import TestResults from './TestResults';
 import TestResultsLabel from './TestResultsLabel';
 import Timeline from './Timeline';
 import ClearTimeline from './ClearTimeline';
-import { useItemTimeline } from './timeline-utils';
+import { useTimelineEntries } from './timeline-utils';
 import ScriptError from './ScriptError';
 import ScriptErrorIcon from './ScriptErrorIcon';
 import StyledWrapper from './StyledWrapper';
@@ -25,6 +25,7 @@ import HeightBoundContainer from 'ui/HeightBoundContainer';
 import ResponseStopWatch from 'components/ResponsePane/ResponseStopWatch';
 import WSMessagesList from './WsResponsePane/WSMessagesList';
 import ResponsiveTabs from 'ui/ResponsiveTabs';
+import { hasScriptError, isScriptSourcedError } from '@bruno-types';
 
 interface RIGHT_CONTENT_EXPANDED_WIDTHProps {
   item?: React.ReactNode;
@@ -79,11 +80,13 @@ const ResponsePane = ({
     dispatch(updateResponseViewTab({ uid: item.uid, responseViewTab: newViewTab }));
   }, [dispatch, item.uid]);
 
+  const requestFailed = Boolean(response.error) && !isScriptSourcedError(item);
+
+  // Keyed on the item because this pane instance is reused as the selection changes. A request that
+  // failed on its own terms is the actionable error, so the card waits behind its icon.
   useEffect(() => {
-    if (item?.preRequestScriptErrorMessage || item?.postResponseScriptErrorMessage || item?.testScriptErrorMessage) {
-      setShowScriptErrorCard(true);
-    }
-  }, [item?.preRequestScriptErrorMessage, item?.postResponseScriptErrorMessage, item?.testScriptErrorMessage]);
+    setShowScriptErrorCard(hasScriptError(item) && !requestFailed);
+  }, [item?.uid, hasScriptError(item), requestFailed]);
 
   const selectTab = (tab: any) => {
     dispatch(
@@ -110,9 +113,9 @@ const ResponsePane = ({
   }, [response.size, response.dataBuffer]);
   const responseHeadersCount = typeof response.headers === 'object' ? Object.entries(response.headers).length : 0;
 
-  const hasScriptError = item?.preRequestScriptErrorMessage || item?.postResponseScriptErrorMessage || item?.testScriptErrorMessage;
+  const showScriptError = hasScriptError(item);
 
-  const timelineCount = useItemTimeline(collection, item).length;
+  const timelineCount = useTimelineEntries(collection, item).length;
 
   const allTabs = useMemo((): Array<{ key: string; label: React.ReactNode; indicator: React.ReactNode }> => {
     return [
@@ -224,7 +227,7 @@ const ResponsePane = ({
 
   const rightContent = !isLoading ? (
     <div ref={rightContentRef} className="flex justify-end items-center right-side-container gap-3">
-      {hasScriptError && !showScriptErrorCard && (
+      {showScriptError && !showScriptErrorCard && (
         <ScriptErrorIcon
           itemUid={item.uid}
           onClick={() => setShowScriptErrorCard(true)}
@@ -299,9 +302,10 @@ const ResponsePane = ({
         }}
       >
         {isLoading ? <Overlay item={item} collection={collection} /> : null}
-        {hasScriptError && showScriptErrorCard && (
+        {showScriptError && showScriptErrorCard && (
           <ScriptError
             item={item}
+            collection={collection}
             onClose={() => setShowScriptErrorCard(false)}
           />
         )}

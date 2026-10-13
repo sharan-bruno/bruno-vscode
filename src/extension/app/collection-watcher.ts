@@ -11,13 +11,6 @@ import {
   isDotEnvFilename
 } from '../utils/filesystem';
 
-const {
-  parseEnvironment: parseEnvFile,
-  parseRequest: parseRequestFile,
-  parseRequestViaWorker,
-  parseCollection: parseCollectionFile,
-  parseFolder: parseFolderFile
-} = require('@usebruno/filestore');
 const { dotenvToJson } = require('@usebruno/lang');
 
 import { uuid } from '../utils/common';
@@ -29,7 +22,13 @@ import { setBrunoConfig } from '../store/bruno-config';
 import EnvironmentSecretsStore from '../store/env-secrets';
 import UiStateSnapshot from '../store/ui-state-snapshot';
 import { parseFileMeta, hydrateRequestWithUuid } from '../utils/collection';
-import { parseLargeRequestWithRedaction } from '../utils/parse';
+import {
+  parseLargeRequestWithRedaction,
+  parseRequest,
+  parseCollection,
+  parseFolder,
+  parseEnvironment
+} from '../utils/parse';
 import { transformBrunoConfigAfterRead } from '../utils/transformBrunoConfig';
 
 // Message sender type - will be set by the extension (variadic args)
@@ -44,22 +43,6 @@ let messageSender: MessageSender | null = null;
 export function setMessageSender(sender: MessageSender): void {
   messageSender = sender;
 }
-
-const parseEnvironment = async (content: string, options: { format: string }) => {
-  return parseEnvFile(content, { format: options.format });
-};
-
-const parseRequest = async (content: string, options: { format: string }) => {
-  return parseRequestFile(content, { format: options.format });
-};
-
-const parseCollection = async (content: string, options: { format: string }) => {
-  return parseCollectionFile(content, { format: options.format });
-};
-
-const parseFolder = async (content: string, options: { format: string }) => {
-  return parseFolderFile(content, { format: options.format });
-};
 
 const parseDotEnv = (content: string): Record<string, string> => {
   return dotenvToJson(content);
@@ -812,9 +795,9 @@ class CollectionWatcher {
         }
 
         if (isBrunoConfigFile(filePath, watchPath) ||
-            isEnvironmentsFolder(filePath, watchPath) ||
-            isCollectionRootFile(filePath, watchPath) ||
-            isFolderRootFile(filePath, watchPath)) {
+          isEnvironmentsFolder(filePath, watchPath) ||
+          isCollectionRootFile(filePath, watchPath) ||
+          isFolderRootFile(filePath, watchPath)) {
           priorityFiles.push(filePath);
         } else {
           requestFiles.push(filePath);
@@ -1595,9 +1578,9 @@ class CollectionWatcher {
         }
 
         if (isBrunoConfigFile(filePath, collectionPath) ||
-            isEnvironmentsFolder(filePath, collectionPath) ||
-            isCollectionRootFile(filePath, collectionPath) ||
-            isFolderRootFile(filePath, collectionPath)) {
+          isEnvironmentsFolder(filePath, collectionPath) ||
+          isCollectionRootFile(filePath, collectionPath) ||
+          isFolderRootFile(filePath, collectionPath)) {
           priorityFiles.push(filePath);
         } else {
           requestFiles.push(filePath);
@@ -1682,7 +1665,7 @@ class CollectionWatcher {
     const posixPath = posixifyPath(nativePath);
     const effectivePath = this.watchers.has(nativePath) ? nativePath
       : this.watchers.has(posixPath) ? posixPath
-      : watchPath;
+        : watchPath;
 
     if (this.watchers.has(effectivePath)) {
       const watchers = this.watchers.get(effectivePath)!;

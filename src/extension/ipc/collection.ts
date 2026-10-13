@@ -8,6 +8,7 @@ import AdmZip from 'adm-zip';
 import extractZip from 'extract-zip';
 import type { BrunoVariableDataType } from '@usebruno/common/utils';
 import { jsonToDotenv } from '@usebruno/common/utils';
+import type { BrunoCollection } from '@bruno-types';
 import { registerHandler, registerEventListener, sendToWebview, broadcastToAllWebviews, emit, getCurrentWebview } from './handlers';
 import { stateManager } from '../webview/state-manager';
 import {
@@ -27,6 +28,7 @@ import {
   removePath,
   getPaths,
   generateUniqueName,
+  makeFolderNameUnique,
   isDotEnvFile,
   isValidDotEnvFilename,
   isBrunoConfigFile,
@@ -55,18 +57,14 @@ import { getProcessEnvVars } from '../store/process-env';
 import collectionWatcher from '../app/collection-watcher';
 import { transformBrunoConfigBeforeSave } from '../utils/transformBrunoConfig';
 import { REQUEST_TYPES } from '../utils/constants';
+import { parseRequest, parseRequestViaWorker, parseCollection, parseFolder } from '../utils/parse';
 
 const {
-  parseRequest,
   stringifyRequest,
-  parseRequestViaWorker,
   stringifyRequestViaWorker,
-  parseCollection,
   stringifyCollection,
-  parseFolder,
   stringifyFolder,
-  stringifyEnvironment,
-  parseEnvironment
+  stringifyEnvironment
 } = require('@usebruno/filestore');
 
 const {
@@ -1058,6 +1056,14 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
     }
   });
 
+  const writeCollectionFile = async (filePath: string, content: string) => {
+    if (isDocumentRegistered(filePath)) {
+      await writeFileViaVSCode(filePath, content);
+    } else {
+      await writeFile(filePath, content);
+    }
+  };
+
   registerHandler('renderer:save-bruno-config', async (args) => {
     const [collectionPath, brunoConfig] = args as [string, BrunoConfig];
 
@@ -1074,7 +1080,7 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
         const content = fs.readFileSync(configFilePath, 'utf8');
         const parsed = await parseCollection(content, { format });
         const newContent = await stringifyCollection(parsed.collectionRoot, transformedConfig, { format });
-        await writeFile(configFilePath, newContent);
+        await writeCollectionFile(configFilePath, newContent);
       } else {
         const content = await stringifyJson(transformedConfig);
         await writeFile(configFilePath, content);
@@ -1098,7 +1104,7 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
       if (format === 'yml') {
         const configFilePath = path.join(collectionPath, 'opencollection.yml');
         const content = await stringifyCollection(collectionRoot, transformedConfig, { format });
-        await writeFile(configFilePath, content);
+        await writeCollectionFile(configFilePath, content);
       } else {
         const configFilePath = path.join(collectionPath, 'bruno.json');
         const content = await stringifyJson(transformedConfig);
@@ -1193,15 +1199,11 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
     try {
       const format = getCollectionFormat(collectionPathname);
       const filename = format === 'yml' ? 'opencollection.yml' : 'collection.bru';
-      const content = await stringifyCollection(collectionRoot, brunoConfig, { format });
+      const configToSave = format === 'yml' && brunoConfig ? transformBrunoConfigBeforeSave(brunoConfig) : brunoConfig;
+      const content = await stringifyCollection(collectionRoot, configToSave, { format });
       const filePath = path.join(collectionPathname, filename);
 
-      // Use VS Code-aware write if the file is open in a custom editor
-      if (isDocumentRegistered(filePath)) {
-        await writeFileViaVSCode(filePath, content);
-      } else {
-        await writeFile(filePath, content);
-      }
+      await writeCollectionFile(filePath, content);
 
       return { success: true };
     } catch (error) {
@@ -1209,25 +1211,16 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
     }
   });
 
-  // Additional handlers to be implemented:
-  // - renderer:save-multiple-requests
-  // - renderer:copy-environment
-  // - renderer:export-collection
-
-  registerHandler('renderer:import-collection', async (args) => {
-    const [collection, collectionLocation, format = 'yml'] = args as [any, string, string];
-
+  const importCollection = async (
+    collection: any,
+    collectionLocation: string,
+    format: string
+  ): Promise<string> => {
     try {
-      const collectionName = collection.name || 'Imported Collection';
+      const collectionName = makeFolderNameUnique(collection.name || 'Imported Collection', collectionLocation)
       const collectionFolderName = sanitizeName(collectionName);
       const dirPath = path.join(collectionLocation, collectionFolderName);
-
-      if (fs.existsSync(dirPath)) {
-        const files = fs.readdirSync(dirPath);
-        if (files.length > 0) {
-          throw new Error(`collection: ${dirPath} already exists and is not empty`);
-        }
-      }
+      collection.name = collectionName;
 
       if (!fs.existsSync(dirPath)) {
         await createDirectory(dirPath);
@@ -1353,6 +1346,32 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
     } catch (error) {
       throw error;
     }
+  };
+
+  // Additional handlers to be implemented:
+  // - renderer:save-multiple-requests
+  // - renderer:copy-environment
+  // - renderer:export-collection
+
+  registerHandler('renderer:import-collection', async (args) => {
+    const [uploadedContent, collectionLocation, format = 'yml'] = args as [BrunoCollection | BrunoCollection[], string, string];
+    const collections = Array.isArray(uploadedContent) ? uploadedContent : [uploadedContent]
+
+    const items: Array<{ uid: string; name: string; path: string }> = [];
+    const failures: Array<{ uid: string; name: string; message: string }> = [];
+
+    for (const collection of collections) {
+      try {
+        const dirPath = await importCollection(collection, collectionLocation, format);
+        items.push({ uid: collection.uid, name: collection.name, path: dirPath });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[Import] Failed to import collection "${collection?.name}":`, error);
+        failures.push({ uid: collection?.uid, name: collection?.name, message });
+      }
+    }
+
+    return { success: { count: items.length, items }, failures };
   });
 
   // --- Collection format conversion handlers ---
@@ -1362,7 +1381,8 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
   registerHandler('renderer:convert-postman-to-bruno', async (args) => {
     const [postmanCollection] = args as [any];
     try {
-      return await postmanToBrunoConverter(postmanCollection);
+      const result = await postmanToBrunoConverter(postmanCollection);
+      return result?.collection ?? result;
     } catch (error) {
       console.error('[Collection IPC] Error converting Postman to Bruno:', error);
       throw error;

@@ -5,9 +5,12 @@ import * as net from 'net';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
+import { runCommand } from '../page/actions';
+import { CA_CERT } from '../../ssl/client-certificate/server/mtls-certs';
 
 // This file lives at tests/e2e/utils/fixtures/, so climb four levels to the repo root.
 const EXTENSION_ROOT = path.resolve(__dirname, '../../../..');
+const VSCODE_VERSION = '1.136.2';
 
 export interface VSCodeFixture {
   /** The VS Code workbench page — use this to interact with the UI */
@@ -15,6 +18,10 @@ export interface VSCodeFixture {
   context: BrowserContext;
   /** Temp directory for storing test collections — cleaned up automatically */
   tmpDir: string;
+}
+
+export interface VSCodeOptions {
+  vscodeSettings: Record<string, unknown>;
 }
 
 async function getFreePort(): Promise<number> {
@@ -45,6 +52,28 @@ async function waitForPort(port: number, timeoutMs = 25_000): Promise<void> {
   throw new Error(`Port ${port} never opened within ${timeoutMs}ms`);
 }
 
+/**
+ * @vscode/test-electron hardcodes the macOS binary as `Electron`, but VS Code 1.131
+ * renamed it to `Code`, so spawning the path it hands back fails with ENOENT. Only
+ * macOS is affected — on Windows it returns `Code.exe` and on Linux `code`, both of
+ * which are still current.
+ */
+function resolveRenamedBinary(exe: string): string {
+  if (process.platform !== 'darwin') {
+    return exe;
+  }
+  const dir = path.dirname(exe);
+  if (!fs.existsSync(dir)) {
+    return exe;
+  }
+  const entries = fs.readdirSync(dir);
+  if (entries.includes('Code')) {
+    return path.join(dir, 'Code');
+  }
+  // Contents/MacOS holds only the main executable, whatever it is called.
+  return entries.length === 1 ? path.join(dir, entries[0]) : exe;
+}
+
 async function resolveExecutable(): Promise<string> {
   if (process.env.CURSOR_PATH) {
     console.log(`[e2e] Using Cursor: ${process.env.CURSOR_PATH}`);
@@ -54,19 +83,24 @@ async function resolveExecutable(): Promise<string> {
     console.log(`[e2e] Using custom VS Code: ${process.env.VSCODE_PATH}`);
     return process.env.VSCODE_PATH;
   }
-  console.log('[e2e] Downloading stable VS Code…');
-  const exe = await downloadAndUnzipVSCode('stable');
-  console.log(`[e2e] Using VS Code: ${exe}`);
-  return exe;
+  console.log(`[e2e] Downloading VS Code ${VSCODE_VERSION}…`);
+  const exe = await downloadAndUnzipVSCode(VSCODE_VERSION);
+  const resolved = fs.existsSync(exe) ? exe : resolveRenamedBinary(exe);
+  if (!fs.existsSync(resolved)) {
+    throw new Error(`VS Code executable not found (tried ${exe} and ${resolved})`);
+  }
+  console.log(`[e2e] Using VS Code: ${resolved}`);
+  return resolved;
 }
 
 /** Write VS Code user settings to suppress welcome/trust dialogs and speed up startup */
-function writeVSCodeSettings(userDataDir: string): void {
+function writeVSCodeSettings(userDataDir: string, extraSettings: Record<string, unknown> = {}): void {
   const userDir = path.join(userDataDir, 'User');
   fs.mkdirSync(userDir, { recursive: true });
   fs.writeFileSync(
     path.join(userDir, 'settings.json'),
     JSON.stringify({
+      'window.newWindowDimensions': 'maximized',
       'workbench.startupEditor': 'none',
       'update.mode': 'none',
       'extensions.autoCheckUpdates': false,
@@ -76,9 +110,12 @@ function writeVSCodeSettings(userDataDir: string): void {
       'security.workspace.trust.enabled': false,
       'extensions.ignoreRecommendations': true,
       'github.copilot.enable': false,
+      'chat.disableAIFeatures': true,
+      'workbench.secondarySideBar.defaultVisibility': 'hidden',
       'workbench.welcomePage.walkthroughs.openOnInstall': false,
       'workbench.accounts.experimental.showEntitlements': false,
       'accessibility.signUpPlaceholder': false,
+      ...extraSettings,
     }, null, 2)
   );
 }
@@ -101,7 +138,10 @@ function launchVSCode(
     workspacePath,
   ];
 
-  const proc = spawn(executablePath, args, { detached: false });
+  const proc = spawn(executablePath, args, {
+    detached: false,
+    env: { ...process.env, NODE_EXTRA_CA_CERTS: CA_CERT }
+  });
   // Only log errors to avoid noise
   proc.stderr?.on('data', d => {
     const line = String(d);
@@ -110,6 +150,23 @@ function launchVSCode(
     }
   });
   return proc;
+}
+
+function makeTempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    if (process.platform !== 'win32') {
+      return dir;
+    }
+    const longPath = fs.realpathSync.native(dir);
+    return longPath.replace(/^([A-Za-z]):/, (_match, drive: string) => `${drive.toLowerCase()}:`);
+  }
+
+async function ensureSecondarySidebarClosed(page: Page): Promise<void> {
+  const auxiliaryBar = page.locator('.part.auxiliarybar');
+  const isVisible = await auxiliaryBar.isVisible().catch(() => false);
+  if (!isVisible) return;
+  await runCommand(page, 'View: Close Secondary Side Bar');
+  await auxiliaryBar.waitFor({ state: 'hidden'}).catch(() => {});
 }
 
 /** Wait for the VS Code workbench UI to be ready */
@@ -130,20 +187,23 @@ async function waitForWorkbench(page: Page): Promise<void> {
   } catch {
     // Dialog didn't appear — that's fine
   }
+  await ensureSecondarySidebarClosed(page);
 
   // Small extra buffer for extension activation
   await new Promise(r => setTimeout(r, 2_000));
 }
 
-export const test = base.extend<VSCodeFixture>({
-  page: async ({}, use) => {
+export const test = base.extend<VSCodeFixture & VSCodeOptions>({
+  vscodeSettings: [{}, { option: true }],
+
+  page: async ({ vscodeSettings }, use) => {
     const debugPort = await getFreePort();
-    const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bruno-vscode-test-'));
+    const userDataDir = makeTempDir('bruno-vscode-test-');
 
     // Create a temp workspace folder so the extension host has a workspace to run against
-    const workspacePath = fs.mkdtempSync(path.join(os.tmpdir(), 'bruno-workspace-'));
+    const workspacePath = makeTempDir('bruno-workspace-');
 
-    writeVSCodeSettings(userDataDir);
+    writeVSCodeSettings(userDataDir, vscodeSettings);
 
     const executablePath = await resolveExecutable();
     const proc = launchVSCode(executablePath, debugPort, userDataDir, workspacePath);
@@ -199,7 +259,7 @@ export const test = base.extend<VSCodeFixture>({
   },
 
   tmpDir: async ({}, use) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bruno-test-collections-'));
+    const dir = makeTempDir('bruno-test-collections-');
     await use(dir);
     fs.rmSync(dir, { recursive: true, force: true });
   },

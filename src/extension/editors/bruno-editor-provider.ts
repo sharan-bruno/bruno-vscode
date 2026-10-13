@@ -9,7 +9,8 @@ import {
   setCurrentWebview,
   clearCurrentWebview,
   handleInvoke,
-  hasHandler
+  hasHandler,
+  registerHandler
 } from '../ipc/handlers';
 import {
   openCollection,
@@ -43,10 +44,42 @@ interface CollectionLoadParams {
   webviewPanel: vscode.WebviewPanel;
 }
 
+interface ScriptErrorFocus {
+  scriptPhase: string;
+  line?: number;
+}
+
 const pendingVariablesModeRequests = new Map<string, { collectionRoot: string }>();
 const pendingNotLoadedRequests = new Map<string, { parentCollectionRoot: string }>();
+const pendingScriptErrorFocus = new Map<string, ScriptErrorFocus>();
 // Stores view data per webview so renderer:ready can re-send as fallback
 const viewDataByWebview = new Map<vscode.Webview, Record<string, unknown>>();
+const webviewByFilePath = new Map<string, vscode.Webview>();
+
+function syncTabTitleWithRequestName(
+  webviewPanel: vscode.WebviewPanel,
+  document: vscode.TextDocument,
+  collectionRoot: string
+): vscode.Disposable {
+  const applyTitle = (): void => {
+    try {
+      const meta = parseFileMeta(document.getText(), getCollectionFormat(collectionRoot));
+      const name = typeof meta?.name === 'string' ? meta.name.trim() : '';
+      if (name) {
+        webviewPanel.title = name;
+      }
+    } catch {
+    }
+  };
+
+  applyTitle();
+
+  return vscode.workspace.onDidChangeTextDocument((e) => {
+    if (e.document.uri.toString() === document.uri.toString()) {
+      applyTitle();
+    }
+  });
+}
 
 export function setPendingVariablesMode(filePath: string, collectionRoot: string): void {
   pendingVariablesModeRequests.set(filePath, { collectionRoot });
@@ -54,6 +87,35 @@ export function setPendingVariablesMode(filePath: string, collectionRoot: string
 
 export function setPendingNotLoadedRequest(filePath: string, parentCollectionRoot: string): void {
   pendingNotLoadedRequests.set(filePath, { parentCollectionRoot });
+}
+
+export function registerScriptErrorSourceHandler(): void {
+  registerHandler('renderer:reveal-script-error-source', async (args: unknown[]) => {
+    const [payload] = args as [{ filePath?: string; scriptPhase?: string; line?: number }];
+
+    if (!payload?.filePath || !payload.scriptPhase || !fs.existsSync(payload.filePath)) {
+      return { success: false };
+    }
+
+    const focus: ScriptErrorFocus = { scriptPhase: payload.scriptPhase, line: payload.line };
+    const key = path.normalize(payload.filePath);
+    pendingScriptErrorFocus.set(key, focus);
+
+    await ensureBrunoEditorIntent(payload.filePath, 'default');
+    await vscode.commands.executeCommand(
+      'vscode.openWith',
+      vscode.Uri.file(payload.filePath),
+      BrunoEditorProvider.viewType
+    );
+
+    const webview = webviewByFilePath.get(key);
+    const viewData = webview && viewDataByWebview.get(webview);
+    if (webview && viewData && pendingScriptErrorFocus.delete(key)) {
+      stateManager.sendTo(webview, 'main:set-view', { ...viewData, focusScriptError: focus });
+    }
+
+    return { success: true };
+  });
 }
 
 const currentIntentByFilePath = new Map<string, string>();
@@ -108,6 +170,7 @@ export class BrunoEditorProvider implements vscode.CustomTextEditorProvider {
     stateManager.addWebview(webviewPanel.webview);
 
     registerDocument(document);
+    webviewByFilePath.set(path.normalize(filePath), webviewPanel.webview);
 
     const collectionRoot = findCollectionRoot(filePath);
 
@@ -117,12 +180,16 @@ export class BrunoEditorProvider implements vscode.CustomTextEditorProvider {
     // collection-root check and collection-format awareness, so the editor and
     // the watcher agree on what a given file represents.
     let activeItemUid: string;
+    let titleSubscription: vscode.Disposable | undefined;
     if (collectionRoot && isCollectionRootFile(filePath, collectionRoot)) {
       activeItemUid = generateUidBasedOnHash(collectionRoot);
     } else if (collectionRoot && isFolderRootFile(filePath, collectionRoot)) {
       activeItemUid = generateUidBasedOnHash(path.dirname(filePath));
     } else {
       activeItemUid = generateUidBasedOnHash(filePath);
+      if (collectionRoot) {
+        titleSubscription = syncTabTitleWithRequestName(webviewPanel, document, collectionRoot);
+      }
     }
 
     stateManager.setActiveEditorWebview(webviewPanel.webview);
@@ -137,10 +204,12 @@ export class BrunoEditorProvider implements vscode.CustomTextEditorProvider {
     });
 
     webviewPanel.onDidDispose(() => {
+      titleSubscription?.dispose();
       clearActiveItemFromSidebar(activeItemUid);
       stateManager.removeWebview(webviewPanel.webview);
       unregisterDocument(document.uri.fsPath);
       viewDataByWebview.delete(webviewPanel.webview);
+      webviewByFilePath.delete(path.normalize(document.uri.fsPath));
       currentIntentByFilePath.delete(document.uri.fsPath);
     });
 
@@ -293,7 +362,16 @@ export class BrunoEditorProvider implements vscode.CustomTextEditorProvider {
         }
 
         viewDataByWebview.set(webviewPanel.webview, viewData);
-        stateManager.sendTo(webviewPanel.webview, 'main:set-view', viewData);
+
+        const focusKey = path.normalize(filePath);
+        const focusScriptError = pendingScriptErrorFocus.get(focusKey);
+        pendingScriptErrorFocus.delete(focusKey);
+
+        stateManager.sendTo(
+          webviewPanel.webview,
+          'main:set-view',
+          focusScriptError ? { ...viewData, focusScriptError } : viewData
+        );
 
         // Collection/folder settings dashboards need the full request tree (e.g.
         // the Overview shows request counts). The single-request open above only
@@ -424,6 +502,10 @@ export class BrunoEditorProvider implements vscode.CustomTextEditorProvider {
 
       case 'sidebar:open-global-environments':
         vscode.commands.executeCommand('bruno.openGlobalEnvironments');
+        break;
+
+      case 'open-in-text-editor':
+        vscode.commands.executeCommand('bruno.switchToTextEditor');
         break;
     }
   }

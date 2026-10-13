@@ -12,7 +12,7 @@ import {
   readWorkspaceConfig
 } from '../utils/workspace-config';
 import { prepareWorkspaceConfigForClient } from '../ipc/workspace';
-const { parseCollection } = require('@usebruno/filestore');
+import { parseCollection } from '../utils/parse';
 
 // Message sender type - will be set by the extension (variadic args)
 type MessageSender = (channel: string, ...args: unknown[]) => void;
@@ -148,16 +148,15 @@ export const openCollectionDialog = async (watcher: CollectionWatcher): Promise<
 
   await Promise.all(openCollectionPromises);
 
-  // Show toast if user tried to open collections that were already open
-  if (alreadyOpenCount > 0 && messageSender) {
+  if (alreadyOpenCount > 0) {
     const message = alreadyOpenCount === 1
       ? 'Collection is already opened'
       : `${alreadyOpenCount} collections are already opened`;
-    messageSender('main:toast-success', message);
+    vscode.window.showInformationMessage(message);
   }
 
-  if (invalidPaths.length > 0 && messageSender) {
-    messageSender('main:display-error', `Some selected folders could not be opened: ${invalidPaths.join(', ')}`);
+  if (invalidPaths.length > 0) {
+    vscode.window.showErrorMessage(`Some selected folders could not be opened: ${invalidPaths.join(', ')}`);
   }
 };
 
@@ -219,8 +218,8 @@ export const openCollection = async (
     return { alreadyOpen: watcherExists };
   } catch (err) {
     const error = err as Error;
-    if (!options.dontSendDisplayErrors && messageSender) {
-      messageSender('main:display-error', error.message || 'An error occurred while opening the local collection');
+    if (!options.dontSendDisplayErrors) {
+      vscode.window.showErrorMessage(error.message || 'An error occurred while opening the local collection');
     }
     return { alreadyOpen: false };
   }
