@@ -78,30 +78,34 @@ const DotEnvFileEditor = ({
   const formikRef = useRef(formik);
   formikRef.current = formik;
 
+  const savedValuesJson = useMemo(() => JSON.stringify(normalizeForComparison(variables || [])), [variables]);
+  const tableBaselineRef = useRef(savedValuesJson);
+
   useEffect(() => {
     setRawValue(content);
-  }, [content]);
+    tableBaselineRef.current = savedValuesJson;
+  }, [content, savedValuesJson]);
 
   useEffect(() => {
     if (viewMode === prevViewMode) return;
+    setPrevViewMode(viewMode);
 
     if (viewMode === 'raw') {
-      const namedVars = formikRef.current.values.filter((variable) => variable.name && variable.name.trim() !== '');
-      setRawValue(variablesToRaw(namedVars));
-    } else {
-      formikRef.current.setValues([...rawToVariables(rawValue), emptyRow()]);
+      const tableJson = JSON.stringify(normalizeForComparison(formikRef.current.values));
+      if (tableJson === tableBaselineRef.current) return;
+      setRawValue(variablesToRaw(formikRef.current.values));
+      tableBaselineRef.current = tableJson;
+      return;
     }
-    setPrevViewMode(viewMode);
-  }, [viewMode, prevViewMode, rawValue]);
 
-  const savedValuesJson = useMemo(() => JSON.stringify(normalizeForComparison(variables || [])), [variables]);
+    if (rawValue === content) return;
+    const parsed = rawToVariables(rawValue);
+    formikRef.current.setValues([...parsed, emptyRow()]);
+    tableBaselineRef.current = JSON.stringify(normalizeForComparison(parsed));
+  }, [viewMode, prevViewMode, rawValue, content]);
 
   useEffect(() => {
-    if (viewMode === 'raw') {
-      setIsModified(rawValue !== content);
-    } else {
-      setIsModified(JSON.stringify(normalizeForComparison(formik.values)) !== savedValuesJson);
-    }
+    setIsModified(viewMode === 'raw' ? rawValue !== content : JSON.stringify(normalizeForComparison(formik.values)) !== savedValuesJson);
   }, [formik.values, savedValuesJson, setIsModified, viewMode, rawValue, content]);
 
   const handleRemoveVar = useCallback((id: string) => {

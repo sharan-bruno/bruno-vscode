@@ -6,89 +6,109 @@ import {
   openBrunoSidebar,
   createCollection,
   findCollectionDir,
-  waitForNewWebviewFrame
+  openCollectionSettings,
+  openEnvironmentsTab
 } from '../utils/page/actions';
 import { buildCommonLocators } from '../utils/page/locators';
 
-/**
- * Open the environment settings panel. It is only reachable from the environment
- * selector in the collection toolbar, and the "Configure" entry only appears once
- * an environment exists, so one is created on the way in.
- */
-async function openEnvironmentSettings(page: Page, sidebar: Frame, collectionName: string): Promise<Frame> {
-  await buildCommonLocators(sidebar).sidebar.collectionName(collectionName).click();
+/** Seed a collection environment on disk; the file watcher picks it up. */
+function writeEnvironmentFile(collectionDir: string, name: string, vars: Record<string, string>): void {
+  const envDir = path.join(collectionDir, 'environments');
+  fs.mkdirSync(envDir, { recursive: true });
+  const body = Object.entries(vars).map(([key, value]) => `  ${key}: ${value}`).join('\n');
+  fs.writeFileSync(path.join(envDir, `${name}.bru`), `vars {\n${body}\n}\n`, 'utf8');
+}
 
-  const settings = await waitForNewWebviewFrame(page, sidebar);
-  await settings.locator('[data-testid="environment-selector-trigger"]').click();
-  await settings.locator('#create-env').click();
-  await settings.locator('#environment-name').fill('Local');
-  await settings.locator('button').filter({ hasText: 'Create' }).last().click();
+/** Open environment settings; "Configure" only appears once an environment exists. */
+async function openEnvironmentSettings(
+  page: Page,
+  sidebar: Frame,
+  collectionName: string,
+  collectionDir: string
+): Promise<Frame> {
+  const settings = await test.step('open the collection with an environment on disk', async () => {
+    writeEnvironmentFile(collectionDir, 'Local', { host: 'localhost' });
+    return openCollectionSettings(page, sidebar, collectionName);
+  });
 
-  const environments = await waitForNewWebviewFrame(page, settings);
-  await expect(environments.locator('[data-testid="dotenv-files-section"]')).toBeVisible({ timeout: 15_000 });
-
-  return environments;
+  return test.step('the Environments tab opens with the .env section', async () => {
+    const environments = await openEnvironmentsTab(page, settings);
+    await expect(buildCommonLocators(environments).dotEnv.section()).toBeVisible();
+    return environments;
+  });
 }
 
 test.describe('.env files', () => {
   test('lists, edits and deletes .env files alongside environments', async ({ page, tmpDir }) => {
     const sidebar = await openBrunoSidebar(page);
     const collectionName = 'DotEnv Collection';
-    await createCollection(page, sidebar, collectionName, tmpDir);
+    await createCollection(page, sidebar, collectionName, tmpDir, 'bru');
 
-    const dotEnvPath = path.join(findCollectionDir(tmpDir), '.env');
+    const collectionDir = findCollectionDir(tmpDir);
+    const dotEnvPath = path.join(collectionDir, '.env');
     fs.writeFileSync(dotEnvPath, '# credentials\nHOST=localhost\n');
 
-    const environments = await openEnvironmentSettings(page, sidebar, collectionName);
+    const environments = await openEnvironmentSettings(page, sidebar, collectionName, collectionDir);
+    const { dotEnv } = buildCommonLocators(environments);
 
-    await environments.locator('[data-testid="dotenv-files-section"]').click();
-    const dotEnvRow = environments.locator('[data-testid="dotenv-file-.env"]');
-    await expect(dotEnvRow).toBeVisible({ timeout: 10_000 });
+    await test.step('the .env file on disk is listed in the .env section', async () => {
+      await dotEnv.section().click();
+      await expect(dotEnv.file('.env')).toBeVisible();
+    });
 
-    await dotEnvRow.click();
-    await expect(environments.locator('[data-testid="dotenv-var-row-HOST"]')).toBeVisible({ timeout: 10_000 });
+    await test.step('opening the file shows its variables in the table view', async () => {
+      await dotEnv.file('.env').click();
+      await expect(dotEnv.varRow('HOST')).toBeVisible();
+    });
 
-    const lastNameInput = environments.locator('[data-testid^="dotenv-var-row-"] input[type="text"]').last();
-    await lastNameInput.fill('PORT');
-    await environments.locator('[data-testid="save-dotenv"]').click();
+    await test.step('adding a variable and saving writes it to the file', async () => {
+      await dotEnv.varNameInputs().last().fill('PORT');
+      await dotEnv.save().click();
 
-    await expect(async () => {
-      expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('PORT=');
-    }).toPass({ timeout: 10_000 });
-    expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('HOST=localhost');
+      await expect(async () => {
+        expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('PORT=');
+      }).toPass();
+      expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('HOST=localhost');
+    });
 
-    await environments.locator('[data-testid="delete-dotenv-file"]').click();
-    await environments.locator('button').filter({ hasText: 'Delete' }).last().click();
+    await test.step('deleting the file removes it from disk and from the list', async () => {
+      await dotEnv.deleteFile().click();
+      await buildCommonLocators(environments).modal.confirm().click();
 
-    await expect(async () => {
-      expect(fs.existsSync(dotEnvPath)).toBe(false);
-    }).toPass({ timeout: 10_000 });
-    await expect(dotEnvRow).toBeHidden({ timeout: 10_000 });
+      await expect(async () => {
+        expect(fs.existsSync(dotEnvPath)).toBe(false);
+      }).toPass();
+      await expect(dotEnv.file('.env')).toBeHidden();
+    });
   });
 
   test('keeps comments when saving from the raw view', async ({ page, tmpDir }) => {
     const sidebar = await openBrunoSidebar(page);
     const collectionName = 'DotEnv Raw Collection';
-    await createCollection(page, sidebar, collectionName, tmpDir);
+    await createCollection(page, sidebar, collectionName, tmpDir, 'bru');
 
-    const dotEnvPath = path.join(findCollectionDir(tmpDir), '.env.local');
+    const collectionDir = findCollectionDir(tmpDir);
+    const dotEnvPath = path.join(collectionDir, '.env.local');
     fs.writeFileSync(dotEnvPath, '# staging credentials\nTOKEN=abc\n');
 
-    const environments = await openEnvironmentSettings(page, sidebar, collectionName);
+    const environments = await openEnvironmentSettings(page, sidebar, collectionName, collectionDir);
+    const { dotEnv } = buildCommonLocators(environments);
 
-    await environments.locator('[data-testid="dotenv-files-section"]').click();
-    await environments.locator('[data-testid="dotenv-file-.env.local"]').click();
-    await environments.locator('[data-testid="dotenv-view-raw"]').click();
+    await test.step('the raw view shows the file content including comments', async () => {
+      await dotEnv.section().click();
+      await dotEnv.file('.env.local').click();
+      await dotEnv.viewRaw().click();
+      await expect(dotEnv.rawEditor()).toContainText('# staging credentials');
+    });
 
-    const editor = environments.locator('[data-testid="dotenv-raw-editor"] .CodeMirror');
-    await expect(editor).toContainText('# staging credentials', { timeout: 10_000 });
+    await test.step('saving from the raw view preserves comments and values', async () => {
+      await dotEnv.saveRaw().click();
 
-    await environments.locator('[data-testid="save-dotenv-raw"]').click();
-
-    await expect(async () => {
-      const content = fs.readFileSync(dotEnvPath, 'utf8');
-      expect(content).toContain('# staging credentials');
-      expect(content).toContain('TOKEN=abc');
-    }).toPass({ timeout: 10_000 });
+      await expect(async () => {
+        const content = fs.readFileSync(dotEnvPath, 'utf8');
+        expect(content).toContain('# staging credentials');
+        expect(content).toContain('TOKEN=abc');
+      }).toPass();
+    });
   });
 });

@@ -13,10 +13,8 @@ const VariableNameError = ({ formik, name, index }: VariableNameErrorProps) => {
   const id = `error-${name}-${index}`;
 
   const isLastRow = index === formik.values.length - 1;
-  const variable = formik.values[index];
-  const isEmptyRow = !variable?.name || variable.name.trim() === '';
-
-  if ((isLastRow && isEmptyRow) || !meta.error || !meta.touched) {
+  const isTrailingEmptyRow = isLastRow && !formik.values[index]?.name?.trim();
+  if (!meta.touched || !meta.error || isTrailingEmptyRow) {
     return null;
   }
 

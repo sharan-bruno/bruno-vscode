@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { IconTrash } from '@tabler/icons';
 import DeleteDotEnvFile from 'components/Environments/EnvironmentSettings/DeleteDotEnvFile';
+import ToolHint from 'components/ToolHint';
 import StyledWrapper from './StyledWrapper';
 
 interface DotEnvFileDetailsProps {
@@ -45,15 +46,17 @@ const DotEnvFileDetails = ({
               Raw
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowDeleteModal(true)}
-            title="Delete .env file"
-            className="action-btn delete-btn"
-            data-testid="delete-dotenv-file"
-          >
-            <IconTrash size={15} strokeWidth={1.5} />
-          </button>
+          <ToolHint text="Delete .env file" toolhintId="delete-dotenv-file-hint" place="bottom">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              aria-label="Delete .env file"
+              className="action-btn delete-btn"
+              data-testid="delete-dotenv-file"
+            >
+              <IconTrash size={15} strokeWidth={1.5} />
+            </button>
+          </ToolHint>
         </div>
       </div>
 

@@ -2016,7 +2016,7 @@ export const renameEnvironment = (newName: string, environmentUid: string, colle
   });
 };
 
-const invokeForCollection = (
+const invokeDotEnvHandler = (
   collectionUid: string,
   channel: string,
   ...args: unknown[]
@@ -2031,16 +2031,16 @@ const invokeForCollection = (
 };
 
 export const saveDotEnvVariables = (collectionUid: string, variables: DotEnvVariable[], filename = '.env') =>
-  invokeForCollection(collectionUid, 'renderer:save-dotenv-variables', variables, filename);
+  invokeDotEnvHandler(collectionUid, 'renderer:save-dotenv-variables', variables, filename);
 
 export const saveDotEnvRaw = (collectionUid: string, content: string, filename = '.env') =>
-  invokeForCollection(collectionUid, 'renderer:save-dotenv-raw', content, filename);
+  invokeDotEnvHandler(collectionUid, 'renderer:save-dotenv-raw', content, filename);
 
 export const createDotEnvFile = (collectionUid: string, filename = '.env') =>
-  invokeForCollection(collectionUid, 'renderer:create-dotenv-file', filename);
+  invokeDotEnvHandler(collectionUid, 'renderer:create-dotenv-file', filename);
 
 export const deleteDotEnvFile = (collectionUid: string, filename = '.env') =>
-  invokeForCollection(collectionUid, 'renderer:delete-dotenv-file', filename);
+  invokeDotEnvHandler(collectionUid, 'renderer:delete-dotenv-file', filename);
 
 export const deleteEnvironment = (environmentUid: string, collectionUid: string): ThunkAction<Promise<unknown>> => (dispatch, getState) => {
   return new Promise((resolve, reject) => {

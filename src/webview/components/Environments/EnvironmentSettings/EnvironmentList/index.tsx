@@ -6,6 +6,7 @@ import StyledWrapper from './StyledWrapper';
 import ConfirmSwitchEnv from 'components/Environments/ConfirmSwitchEnv';
 import ImportEnvironmentModal from 'components/Environments/Common/ImportEnvironmentModal';
 import CollapsibleSection from 'components/Environments/CollapsibleSection';
+import ToolHint from 'components/ToolHint';
 import DotEnvFileDetails from 'components/Environments/DotEnvFileDetails';
 import DotEnvFileEditor from 'components/Environments/DotEnvFileEditor';
 import Button from 'ui/Button';
@@ -574,39 +575,45 @@ const EnvironmentList = ({
               onToggle={() => setEnvironmentsExpanded(!environmentsExpanded)}
               actions={(
                 <>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    onClick={() => {
-                      setEnvironmentsExpanded(true);
-                      handleCreateEnvClick();
-                    }}
-                    title="Create environment"
-                  >
-                    <IconPlus size={14} strokeWidth={1.5} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    onClick={() => {
-                      setEnvironmentsExpanded(true);
-                      handleImportClick();
-                    }}
-                    title="Import environment"
-                  >
-                    <IconDownload size={14} strokeWidth={1.5} />
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-action"
-                    onClick={() => {
-                      setEnvironmentsExpanded(true);
-                      handleExportClick();
-                    }}
-                    title="Export environment"
-                  >
-                    <IconUpload size={14} strokeWidth={1.5} />
-                  </button>
+                  <ToolHint text="Create environment" toolhintId="create-environment-hint" place="bottom">
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={() => {
+                        setEnvironmentsExpanded(true);
+                        handleCreateEnvClick();
+                      }}
+                      aria-label="Create environment"
+                    >
+                      <IconPlus size={14} strokeWidth={1.5} />
+                    </button>
+                  </ToolHint>
+                  <ToolHint text="Import environment" toolhintId="import-environment-hint" place="bottom">
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={() => {
+                        setEnvironmentsExpanded(true);
+                        handleImportClick();
+                      }}
+                      aria-label="Import environment"
+                    >
+                      <IconDownload size={14} strokeWidth={1.5} />
+                    </button>
+                  </ToolHint>
+                  <ToolHint text="Export environment" toolhintId="export-environment-hint" place="bottom">
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={() => {
+                        setEnvironmentsExpanded(true);
+                        handleExportClick();
+                      }}
+                      aria-label="Export environment"
+                    >
+                      <IconUpload size={14} strokeWidth={1.5} />
+                    </button>
+                  </ToolHint>
                 </>
               )}
             >
@@ -635,13 +642,14 @@ const EnvironmentList = ({
                 )}
               </div>
 
-              <div className="environments-list">
+              <div className="environments-list" data-testid="environments-list">
                 {filteredEnvironments.map((env: any) => <div
                   key={env.uid}
                   id={env.uid}
                   className={`environment-item ${activeView === 'environment' && selectedEnvironment?.uid === env.uid ? 'active' : ''} ${renamingEnvUid === env.uid ? 'renaming' : ''} ${activeEnvironmentUid === env.uid ? 'activated' : ''}`}
                   onClick={() => renamingEnvUid !== env.uid && handleEnvironmentClick(env)}
                   onDoubleClick={() => handleEnvironmentDoubleClick(env)}
+                  data-testid="environment-item"
                 >
                   {renamingEnvUid === env.uid ? (
                     <div className="rename-container" ref={renameContainerRef}>
@@ -681,7 +689,7 @@ const EnvironmentList = ({
                       <span className="environment-name">{env.name}</span>
                       <div className="environment-actions">
                         {activeEnvironmentUid === env.uid ? (
-                          <div className="activated-checkmark" title="Active environment">
+                          <div className="activated-checkmark" title="Active environment" data-testid="environment-active-checkmark">
                             <IconCheck size={16} strokeWidth={2} />
                           </div>
                         ) : (
@@ -752,15 +760,20 @@ const EnvironmentList = ({
                 onToggle={() => setDotEnvExpanded(!dotEnvExpanded)}
                 badge={dotEnvFiles.length}
                 actions={(
-                  <button
-                    type="button"
-                    className="btn-action"
-                    onClick={handleCreateDotEnvInlineClick}
-                    title="Create .env file"
-                    data-testid="create-dotenv-file"
-                  >
-                    <IconPlus size={14} strokeWidth={1.5} />
-                  </button>
+                  <ToolHint text="Create .env file" toolhintId="create-dotenv-file-hint" place="bottom">
+                    <button
+                      type="button"
+                      className="btn-action"
+                      onClick={() => {
+                        setDotEnvExpanded(true);
+                        handleCreateDotEnvInlineClick();
+                      }}
+                      aria-label="Create .env file"
+                      data-testid="create-dotenv-file"
+                    >
+                      <IconPlus size={14} strokeWidth={1.5} />
+                    </button>
+                  </ToolHint>
                 )}
               >
                 <div className="environments-list">
