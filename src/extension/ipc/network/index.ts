@@ -2,6 +2,7 @@
 import { AxiosResponse, AxiosError } from 'axios';
 import { registerHandler, sendToWebview } from '../handlers';
 import { prepareRequest, BrunoRequest as PrepareRequestType } from './prepare-request';
+import decomment from 'decomment';
 import { interpolateVars } from './interpolate-vars';
 import { createAxiosInstance, AxiosInstanceOptions } from './axios-instance';
 import { saveCancelToken, deleteCancelToken, cancelTokens } from '../../utils/cancel-token';
@@ -617,7 +618,11 @@ const getRequestData = (body: BrunoRequest['body']): unknown => {
 
   switch (body.mode) {
     case 'json':
-      return body.json || undefined;
+      try {
+        return body.json ? JSON.parse(decomment(body.json)) : undefined;
+      } catch {
+        return body.json;
+      }
 
     case 'text':
       return body.text || undefined;

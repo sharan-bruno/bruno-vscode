@@ -2,6 +2,7 @@
 import type { AxiosRequestConfig } from 'axios';
 import { get, filter } from 'lodash';
 import { utils as brunoUtilsRaw } from '@usebruno/common';
+import decomment from 'decomment';
 
 // Type assertion for @usebruno/common utils (no type definitions available)
 const brunoUtils = brunoUtilsRaw as {
@@ -87,7 +88,7 @@ const prepareBody = (body: BrunoRequest['body'], headers: Record<string, string>
     case 'json':
       headers['content-type'] = headers['content-type'] || 'application/json';
       try {
-        return body.json ? JSON.parse(body.json) : undefined;
+        return body.json ? JSON.parse(decomment(body.json)) : undefined;
       } catch {
         return body.json;
       }
