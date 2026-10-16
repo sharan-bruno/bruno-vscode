@@ -52,8 +52,7 @@ const dotEnvVariablesToArray = (envObject: Record<string, string>) => {
   return Object.entries(envObject).map(([name, value]) => ({
     name,
     value,
-    enabled: true,
-    secret: false
+    enabled: true
   }));
 };
 
