@@ -1,8 +1,8 @@
 
 import type { AxiosRequestConfig } from 'axios';
 import { get, filter } from 'lodash';
-import { utils as brunoUtilsRaw } from '@usebruno/common';
 import decomment from 'decomment';
+import { utils as brunoUtilsRaw } from '@usebruno/common';
 
 // Type assertion for @usebruno/common utils (no type definitions available)
 const brunoUtils = brunoUtilsRaw as {
