@@ -94,13 +94,17 @@ const DotEnvFileEditor = ({
 
     if (viewMode === 'raw') {
       const tableJson = JSON.stringify(normalizeForComparison(formikRef.current.values));
-      if (tableJson === tableBaselineRef.current) return;
+      if (tableJson === tableBaselineRef.current) {
+        return;
+      }
       setRawValue(variablesToRaw(formikRef.current.values));
       tableBaselineRef.current = tableJson;
       return;
     }
 
-    if (rawValue === content) return;
+    if (rawValue === content) {
+      return;
+    }
     const parsed = rawToVariables(rawValue);
     formikRef.current.setValues([...parsed, emptyRow()]);
     tableBaselineRef.current = JSON.stringify(normalizeForComparison(parsed));
@@ -112,7 +116,9 @@ const DotEnvFileEditor = ({
 
   const handleRemoveVar = useCallback((id: string) => {
     const currentValues = formikRef.current.values;
-    if (!currentValues.length) return;
+    if (!currentValues.length) {
+      return;
+    }
 
     const lastRow = currentValues[currentValues.length - 1];
     if (lastRow?.uid === id && (!lastRow.name || lastRow.name.trim() === '')) {
@@ -129,7 +135,9 @@ const DotEnvFileEditor = ({
   const handleNameChange = useCallback((index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     formikRef.current.handleChange(e);
 
-    if (index !== formikRef.current.values.length - 1) return;
+    if (index !== formikRef.current.values.length - 1) {
+      return;
+    }
 
     const newVariable = emptyRow();
     setTimeout(() => {
@@ -152,7 +160,9 @@ const DotEnvFileEditor = ({
   }, []);
 
   const handleSave = useCallback(() => {
-    if (isSaving) return;
+    if (isSaving) {
+      return;
+    }
 
     const variablesToSave = formikRef.current.values.filter((variable) => variable.name && variable.name.trim() !== '');
     const hasValidationErrors = variablesToSave.some((variable) => !variableNameRegex.test(variable.name));
@@ -177,7 +187,9 @@ const DotEnvFileEditor = ({
   }, [isSaving, onSave, setIsModified]);
 
   const handleSaveRaw = useCallback(() => {
-    if (isSaving) return;
+    if (isSaving) {
+      return;
+    }
 
     setIsSaving(true);
     onSaveRaw(rawValue)

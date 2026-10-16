@@ -2134,7 +2134,9 @@ export const collectionsSlice = createSlice({
     setDotEnvVariables: (state, action: PayloadAction<SetDotEnvVariablesPayload>) => {
       const { collectionUid, filename, variables, content, exists } = action.payload;
       const collection = findCollectionByUid(state.collections, collectionUid);
-      if (!collection) return;
+      if (!collection) {
+        return;
+      }
 
       const dotEnvFiles = collection.dotEnvFiles || [];
       const existingIndex = dotEnvFiles.findIndex((file) => file.filename === filename);
@@ -2150,8 +2152,12 @@ export const collectionsSlice = createSlice({
       }
 
       dotEnvFiles.sort((a, b) => {
-        if (a.filename === '.env') return -1;
-        if (b.filename === '.env') return 1;
+        if (a.filename === '.env') {
+          return -1;
+        }
+        if (b.filename === '.env') {
+          return 1;
+        }
         return a.filename.localeCompare(b.filename);
       });
 

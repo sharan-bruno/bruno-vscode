@@ -73,7 +73,9 @@ const EnvironmentList = ({
   const dotEnvCreateContainerRef = useRef<HTMLDivElement>(null);
 
   const dotEnvFiles = useSelector((state: any) => {
-    if (isGlobal) return EMPTY_ARRAY;
+    if (isGlobal) {
+      return EMPTY_ARRAY;
+    }
     const coll = state.collections.collections.find((c: any) => c.uid === collection?.uid);
     return coll?.dotEnvFiles || EMPTY_ARRAY;
   });
@@ -183,7 +185,9 @@ const EnvironmentList = ({
   }, [isCreatingInline]);
 
   useEffect(() => {
-    if (!isCreatingDotEnvInline) return;
+    if (!isCreatingDotEnvInline) {
+      return;
+    }
 
     const handleClickOutside = (event: MouseEvent) => {
       if (dotEnvCreateContainerRef.current && !dotEnvCreateContainerRef.current.contains(event.target as Node)) {
@@ -386,12 +390,16 @@ const EnvironmentList = ({
   };
 
   const handleSaveDotEnv = (variables: DotEnvVariable[]) => {
-    if (!selectedDotEnvFile) return Promise.reject(new Error('No file selected'));
+    if (!selectedDotEnvFile) {
+      return Promise.reject(new Error('No file selected'));
+    }
     return dispatch(saveDotEnvVariables(collection.uid, variables, selectedDotEnvFile)) as unknown as Promise<unknown>;
   };
 
   const handleSaveDotEnvRaw = (content: string) => {
-    if (!selectedDotEnvFile) return Promise.reject(new Error('No file selected'));
+    if (!selectedDotEnvFile) {
+      return Promise.reject(new Error('No file selected'));
+    }
     return dispatch(saveDotEnvRaw(collection.uid, content, selectedDotEnvFile)) as unknown as Promise<unknown>;
   };
 

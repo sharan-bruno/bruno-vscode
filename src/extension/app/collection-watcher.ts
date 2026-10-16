@@ -447,7 +447,9 @@ class CollectionWatcher {
   }
 
   private sendProcessEnvUpdate(collectionUid: string, sender: MessageSender, filename?: string): void {
-    if (filename && filename !== '.env') return;
+    if (filename && filename !== '.env') {
+      return;
+    }
 
     sender('main:process-env-update', {
       collectionUid,
