@@ -1,5 +1,5 @@
 import { get } from 'lodash';
-import type { AppCollection, AppItem } from '@bruno-types';
+import type { Auth, AppCollection, AppItem } from '@bruno-types';
 import {
   getTreePathFromCollectionToItem
 } from 'utils/collections/index';
@@ -47,13 +47,15 @@ export interface EffectiveAuthSource {
   type: 'collection' | 'folder';
   uid: string;
   name: string;
-  auth: any;
+  auth?: Auth;
 }
 
-export const getEffectiveAuthSource = (collection: any, item: any): EffectiveAuthSource | null => {
+export const getEffectiveAuthSource = (collection: AppCollection, item: AppItem): EffectiveAuthSource | null => {
   const source = item?.draft ?? item;
   const authMode = get(source, 'request.auth.mode') ?? get(source, 'root.request.auth.mode');
-  if (authMode !== AUTH_MODES.INHERIT) return null;
+  if (authMode !== AUTH_MODES.INHERIT) {
+    return null;
+  }
 
   const collectionRoot = collection?.draft?.root || collection?.root || {};
   const collectionAuth = get(collectionRoot, 'request.auth');
@@ -94,7 +96,11 @@ export const hasEffectiveAuth = (collection: AppCollection, item: AppItem, suppo
   const mode = auth?.mode === AUTH_MODES.INHERIT
     ? getEffectiveAuthSource(collection, item)?.auth?.mode
     : auth?.mode;
-  if (!mode || mode === AUTH_MODES.NONE) return false;
-  if (supportedModes && !supportedModes.includes(mode)) return false;
+  if (!mode || mode === AUTH_MODES.NONE) {
+    return false;
+  }
+  if (supportedModes && !supportedModes.includes(mode)) {
+    return false;
+  }
   return true;
 };
