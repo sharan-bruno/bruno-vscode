@@ -1,4 +1,5 @@
 import { get } from 'lodash';
+import type { AppCollection, AppItem } from '@bruno-types';
 import {
   getTreePathFromCollectionToItem
 } from 'utils/collections/index';
@@ -66,11 +67,15 @@ export const getEffectiveAuthSource = (collection: any, item: any): EffectiveAut
   const requestTreePath = getTreePathFromCollectionToItem(collection, item);
   for (let idx = requestTreePath.length - 1; idx >= 0; idx--) {
     const ancestor = requestTreePath[idx];
-    if (ancestor?.uid === item?.uid) continue;
-    if (ancestor?.type !== 'folder') continue;
+    // Skip the item itself (only its ancestors can provide auth) and anything that isn't a folder (e.g. requests)
+    if (ancestor?.uid === item?.uid || ancestor?.type !== 'folder') {
+      continue;
+    }
     const folderAuth = ancestor?.draft ? get(ancestor, 'draft.root.request.auth') : get(ancestor, 'root.request.auth');
-    if (!folderAuth || !folderAuth.mode) continue;
-    if (folderAuth.mode === AUTH_MODES.INHERIT) continue;
+    // Skip folders with no auth set, or set to inherit, so we keep looking at the next parent up
+    if (!folderAuth?.mode || folderAuth.mode === AUTH_MODES.INHERIT) {
+      continue;
+    }
     effectiveSource = {
       type: 'folder',
       uid: ancestor.uid,
@@ -83,7 +88,7 @@ export const getEffectiveAuthSource = (collection: any, item: any): EffectiveAut
   return effectiveSource;
 };
 
-export const hasEffectiveAuth = (collection: any, item: any, supportedModes?: string[]): boolean => {
+export const hasEffectiveAuth = (collection: AppCollection, item: AppItem, supportedModes?: string[]): boolean => {
   const source = item?.draft ?? item;
   const auth = get(source, 'request.auth') ?? get(source, 'root.request.auth');
   const mode = auth?.mode === AUTH_MODES.INHERIT

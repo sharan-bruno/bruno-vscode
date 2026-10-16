@@ -129,6 +129,7 @@ export const buildCommonLocators = (frame: FrameLike) => ({
   },
   // VS Code workbench UI (not a webview) — pass the page to the factory.
   workbench: {
+    sidebarTitle: () => frame.locator('.part.sidebar .composite.title h2'),
     editorTab: (title: string) => frame.locator('.tabs-container .tab').filter({ hasText: title }),
     editorTabClose: (title: string) =>
       frame.locator('.tabs-container .tab').filter({ hasText: title }).locator('.tab-actions .action-label'),
@@ -174,9 +175,9 @@ export const buildCommonLocators = (frame: FrameLike) => ({
   auth: {
     modeSelector: () => frame.locator('.auth-mode-selector'),
     inheritedMode: () => frame.locator('.inherit-mode-text'),
-    bearerTokenEditor: () => frame.locator('.single-line-editor-wrapper .CodeMirror').first(),
-    basicUsernameEditor: () => frame.locator('.single-line-editor-wrapper .CodeMirror').nth(0),
-    basicPasswordEditor: () => frame.locator('.single-line-editor-wrapper .CodeMirror').nth(1)
+    bearerTokenEditor: () => frame.getByTestId('auth-bearer-token').locator('.CodeMirror'),
+    basicUsernameEditor: () => frame.getByTestId('auth-basic-username').locator('.CodeMirror'),
+    basicPasswordEditor: () => frame.getByTestId('auth-basic-password').locator('.CodeMirror')
   },
   paneTabs: {
     collectionSettingsTab: (key: string) => frame.getByTestId('collection-settings').locator(`[role="tab"].${key}`),

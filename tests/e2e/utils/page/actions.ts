@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Page, Frame, Locator, FrameLocator, expect, test } from '@playwright/test';
+import { Page, Frame, Locator, FrameLocator, expect } from '@playwright/test';
 import { buildCommonLocators } from './locators';
 import { GRPC_SERVER_URL } from '../urls';
 
@@ -88,7 +88,8 @@ export async function openBrunoSidebar(page: Page): Promise<Frame> {
   await expect(brunoIcon).toBeVisible({ timeout: 15_000 });
 
   // Clicking the active icon would collapse the sidebar, so only click when Bruno isn't shown yet.
-  const sidebarTitle = page.locator('.part.sidebar .composite.title h2');
+  const sidebarTitle = buildCommonLocators(page).workbench.sidebarTitle();
+  // /Bruno/i: the sidebar title contains "Bruno" in any casing
   const alreadyOpen = await sidebarTitle.isVisible() && /Bruno/i.test((await sidebarTitle.textContent()) ?? '');
   if (!alreadyOpen) {
     await brunoIcon.click();
@@ -343,7 +344,9 @@ export async function openCollectionByPath(sidebar: Frame, collectionPath: strin
 function readCollectionName(collectionPath: string): string {
   const ocYml = path.join(collectionPath, 'opencollection.yml');
   if (fs.existsSync(ocYml)) {
+    // Reads the name from the yml, e.g. `info:\n  name: My Collection` gives `My Collection`
     const match = fs.readFileSync(ocYml, 'utf8').match(/^\s+name:\s*(.+)$/m);
+    // Drops quotes around the value, e.g. "My Collection" -> My Collection
     if (match) return match[1].trim().replace(/^["']|["']$/g, '');
   }
   const brunoJson = path.join(collectionPath, 'bruno.json');
@@ -1138,34 +1141,30 @@ export async function createFolder(
   folderName: string,
   isCollection: boolean = true
 ): Promise<void> {
-  await test.step(`Create folder "${folderName}" in "${parentName}"`, async () => {
-    // Mock the folder name prompt before opening the menu
-    await mockNewFolderPrompt(sidebar, folderName);
+  await mockNewFolderPrompt(sidebar, folderName);
 
-    const locators = buildCommonLocators(sidebar);
+  const locators = buildCommonLocators(sidebar);
 
-    if (isCollection) {
-      // Expand collection first so it's mounted
-      await expandCollection(sidebar, parentName);
-      const collectionRow = locators.sidebar.collectionName(parentName);
-      await collectionRow.hover();
-      await buildCommonLocators(collectionRow).sidebar.actionsMenu().click();
-      await locators.sidebar.actionsItem('new-folder').click();
-    } else {
-      const folderRow = locators.sidebar.folder(parentName);
-      await folderRow.hover();
-      await buildCommonLocators(folderRow).sidebar.itemMenu().click();
-      await locators.sidebar.itemMenuAction('new-folder').click();
-    }
+  if (isCollection) {
+    await expandCollection(sidebar, parentName);
+    const collectionRow = locators.sidebar.collectionName(parentName);
+    await collectionRow.hover();
+    await buildCommonLocators(collectionRow).sidebar.actionsMenu().click();
+    await locators.sidebar.actionsItem('new-folder').click();
+  } else {
+    const folderRow = locators.sidebar.folder(parentName);
+    await folderRow.hover();
+    await buildCommonLocators(folderRow).sidebar.itemMenu().click();
+    await locators.sidebar.itemMenuAction('new-folder').click();
+  }
 
-    if (!isCollection) {
-      await expandFolder(sidebar, parentName);
-    }
+  if (!isCollection) {
+    await expandFolder(sidebar, parentName);
+  }
 
-    await expect(
-      sidebar.locator('[data-testid="sidebar-collection-item-row"]').filter({ hasText: folderName }).first()
-    ).toBeVisible({ timeout: 15_000 });
-  });
+  await expect(
+    sidebar.locator('[data-testid="sidebar-collection-item-row"]').filter({ hasText: folderName }).first()
+  ).toBeVisible({ timeout: 15_000 });
 }
 
 /** Pick an auth mode by its dropdown label, e.g. 'Bearer Token', in the auth pane that is open. */
@@ -1176,35 +1175,33 @@ export async function selectAuthMode(page: Page, modeLabel: string): Promise<voi
 }
 
 async function selectPaneTab(page: Page, paneSelector: string, tabName: string): Promise<void> {
-  await test.step(`Select tab "${tabName}" in ${paneSelector}`, async () => {
-    const editor = activeEditor(page);
-    const pane = editor.locator(paneSelector);
-    await expect(pane).toBeVisible();
-    await expect(pane.locator('.tabs')).toBeVisible();
+  const editor = activeEditor(page);
+  const pane = editor.locator(paneSelector);
+  await expect(pane).toBeVisible();
+  await expect(pane.locator('.tabs')).toBeVisible();
 
-    const visibleTab = pane.locator('.tabs').getByRole('tab', { name: tabName });
-    const overflowButton = pane.locator('.tabs .more-tabs');
+  const visibleTab = pane.locator('.tabs').getByRole('tab', { name: tabName });
+  const overflowButton = pane.locator('.tabs .more-tabs');
 
-    await expect(async () => {
-      if (await visibleTab.isVisible()) {
-        await visibleTab.click({ timeout: 2000 });
-        await expect(visibleTab).toContainClass('active', { timeout: 2000 });
-        return;
-      }
+  await expect(async () => {
+    if (await visibleTab.isVisible()) {
+      await visibleTab.click({ timeout: 2000 });
+      await expect(visibleTab).toContainClass('active', { timeout: 2000 });
+      return;
+    }
 
-      if (await overflowButton.isVisible()) {
-        await overflowButton.click({ timeout: 2000 });
+    if (await overflowButton.isVisible()) {
+      await overflowButton.click({ timeout: 2000 });
 
-        const dropdownItem = editor.locator('[role="menuitem"]').filter({ hasText: tabName });
-        await dropdownItem.waitFor({ state: 'visible', timeout: 2000 });
-        await dropdownItem.click({ force: true, timeout: 2000 });
-        await expect(visibleTab).toContainClass('active', { timeout: 2000 });
-        return;
-      }
+      const dropdownItem = editor.locator('[role="menuitem"]').filter({ hasText: tabName });
+      await dropdownItem.waitFor({ state: 'visible', timeout: 2000 });
+      await dropdownItem.click({ force: true, timeout: 2000 });
+      await expect(visibleTab).toContainClass('active', { timeout: 2000 });
+      return;
+    }
 
-      throw new Error(`Tab "${tabName}" not found in visible tabs or overflow dropdown`);
-    }).toPass({ timeout: 15000 });
-  });
+    throw new Error(`Tab "${tabName}" not found in visible tabs or overflow dropdown`);
+  }).toPass({ timeout: 15000 });
 }
 
 export async function selectResponsePaneTab(page: Page, tabName: string): Promise<void> {
@@ -1216,12 +1213,10 @@ export async function selectRequestPaneTab(page: Page, tabName: string): Promise
 }
 
 export async function saveRequest(page: Page): Promise<void> {
-  await test.step('Save request', async () => {
-    const saveShortcut = process.platform === 'darwin' ? 'Meta+s' : 'Control+s';
-    await page.keyboard.press(saveShortcut);
-    await expect(activeEditor(page).getByText('Request saved successfully').last()).toBeVisible({ timeout: 3000 });
-    await page.waitForTimeout(200);
-  });
+  const saveShortcut = process.platform === 'darwin' ? 'Meta+s' : 'Control+s';
+  await page.keyboard.press(saveShortcut);
+  await expect(activeEditor(page).getByText('Request saved successfully').last()).toBeVisible({ timeout: 3000 });
+  await page.waitForTimeout(200);
 }
 
 /**
