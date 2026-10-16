@@ -14,6 +14,9 @@ import {
 } from '../../../utils/page/actions';
 import { buildCommonLocators } from '../../../utils/page/locators';
 
+// Renders VS Code's folder picker as an in-window input, so the fixture can type the collection path into it
+test.use({ vscodeSettings: { 'files.simpleDialog.enable': true } });
+
 test.describe('Effective auth mode resolution', () => {
   test('Inherit resolves to the nearest parent, stops at a No Auth folder, and sends no Authorization header', async ({ pageWithCollections: page }) => {
     const collectionName = 'effective-auth-mode-collection';

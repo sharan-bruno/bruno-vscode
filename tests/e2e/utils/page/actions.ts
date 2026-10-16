@@ -329,34 +329,6 @@ export async function importMultipleCollections(
  *
  * @returns The new editor webview Frame for the New Request panel.
  */
-/** Open an existing collection directory in the Bruno sidebar and wait for its row. */
-export async function openCollectionByPath(sidebar: Frame, collectionPath: string): Promise<void> {
-  await sidebar.evaluate(
-    (dir) => (window as any).ipcRenderer.invoke('renderer:open-collection-by-path', [dir]),
-    collectionPath
-  );
-  await expect(
-    buildCommonLocators(sidebar).sidebar.collectionName(readCollectionName(collectionPath))
-  ).toBeVisible({ timeout: 20_000 });
-}
-
-/** The collection name from opencollection.yml or bruno.json, falling back to the directory name. */
-function readCollectionName(collectionPath: string): string {
-  const ocYml = path.join(collectionPath, 'opencollection.yml');
-  if (fs.existsSync(ocYml)) {
-    // Reads the name from the yml, e.g. `info:\n  name: My Collection` gives `My Collection`
-    const match = fs.readFileSync(ocYml, 'utf8').match(/^\s+name:\s*(.+)$/m);
-    // Drops quotes around the value, e.g. "My Collection" -> My Collection
-    if (match) return match[1].trim().replace(/^["']|["']$/g, '');
-  }
-  const brunoJson = path.join(collectionPath, 'bruno.json');
-  if (fs.existsSync(brunoJson)) {
-    const name = JSON.parse(fs.readFileSync(brunoJson, 'utf8')).name;
-    if (name) return name;
-  }
-  return path.basename(collectionPath);
-}
-
 export async function openNewRequestPanel(
   page: Page,
   sidebar: Frame,

@@ -5,7 +5,7 @@ import * as net from 'net';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { runCommand, openBrunoSidebar, openCollectionByPath } from '../page/actions';
+import { runCommand, openBrunoSidebar, openCollectionFromDisk } from '../page/actions';
 import { CA_CERT } from '../../ssl/client-certificate/server/mtls-certs';
 
 // This file lives at tests/e2e/utils/fixtures/, so climb four levels to the repo root.
@@ -288,7 +288,7 @@ export const test = base.extend<VSCodeFixture & VSCodeOptions>({
 
     const sidebar = await openBrunoSidebar(page);
     for (const collectionDir of collectionDirs) {
-      await openCollectionByPath(sidebar, collectionDir);
+      await openCollectionFromDisk(page, sidebar, collectionDir);
     }
 
     await use(page);

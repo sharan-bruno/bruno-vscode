@@ -10,6 +10,9 @@ import {
 } from '../../../utils/page/actions';
 import { buildCommonLocators } from '../../../utils/page/locators';
 
+// Renders VS Code's folder picker as an in-window input, so the fixture can type the collection path into it
+test.use({ vscodeSettings: { 'files.simpleDialog.enable': true } });
+
 test.describe('Modified indicator for auth tab', () => {
   const requestProtocolCases = [
     { protocol: 'HTTP', requestName: 'http-request' },
