@@ -44,8 +44,6 @@ export interface DotEnvVariable {
   uid?: UID;
   name: string;
   value: string;
-  enabled?: boolean;
-  secret?: boolean;
 }
 
 export interface DotEnvFile {
