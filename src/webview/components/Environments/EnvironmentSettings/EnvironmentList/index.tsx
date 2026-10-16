@@ -826,7 +826,7 @@ const EnvironmentList = ({
 
                   {dotEnvNameError && isCreatingDotEnvInline && <div className="env-error">{dotEnvNameError}</div>}
 
-                  {!dotEnvFiles.length && !isCreatingDotEnvInline && (
+                  {dotEnvFiles.length === 0 && !isCreatingDotEnvInline && (
                     <div className="no-env-file">
                       <span>No .env files</span>
                     </div>

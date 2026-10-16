@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getPromptScannableBody, getPromptScannableParams } from './index';
-import { extractPromptVariables } from '@usebruno/common/utils';
+import { extractPromptVariables } from '../../shims/bruno-common-utils';
 
 const promptsIn = (body: any) => extractPromptVariables(getPromptScannableBody(body)).sort();
 

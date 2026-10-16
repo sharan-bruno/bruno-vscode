@@ -1,10 +1,12 @@
 import React from 'react';
+import type { useFormik } from 'formik';
+import type { DotEnvVariable } from '@bruno-types';
 import { IconTrash } from '@tabler/icons';
 import MultiLineEditor from 'components/MultiLineEditor/index';
 import VariableNameError from 'components/Environments/Common/VariableNameError';
 
 interface DotEnvTableViewProps {
-  formik: any;
+  formik: ReturnType<typeof useFormik<DotEnvVariable[]>>;
   theme: 'dark' | 'light';
   onNameChange: (index: number, e: React.ChangeEvent<HTMLInputElement>) => void;
   onNameBlur: (index: number) => void;
@@ -37,7 +39,7 @@ const DotEnvTableView = ({
           </tr>
         </thead>
         <tbody>
-          {formik.values.map((variable: any, index: number) => {
+          {formik.values.map((variable, index) => {
             const isLastRow = index === formik.values.length - 1;
             const isEmptyRow = !variable.name || variable.name.trim() === '';
             const isLastEmptyRow = isLastRow && isEmptyRow;

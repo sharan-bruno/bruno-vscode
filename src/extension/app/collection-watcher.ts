@@ -1528,18 +1528,12 @@ class CollectionWatcher {
     );
     ocYmlWatcher.onDidChange(uri => this.handleFileChange(uri.fsPath, collectionUid, watchPath));
 
-    // '.env*' also matches unrelated files such as .envrc, so every event is filtered
     const dotEnvWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(watchPath, '.env*')
+      new vscode.RelativePattern(watchPath, '{.env,.env.*}')
     );
-    const onDotEnvEvent = (pathname: string, handle: (pathname: string) => void) => {
-      if (isDotEnvFilename(path.basename(pathname))) {
-        handle(pathname);
-      }
-    };
-    dotEnvWatcher.onDidCreate(uri => onDotEnvEvent(uri.fsPath, p => this.handleDotEnvChange(p, collectionUid)));
-    dotEnvWatcher.onDidChange(uri => onDotEnvEvent(uri.fsPath, p => this.handleDotEnvChange(p, collectionUid)));
-    dotEnvWatcher.onDidDelete(uri => onDotEnvEvent(uri.fsPath, p => this.handleDotEnvUnlink(p, collectionUid)));
+    dotEnvWatcher.onDidCreate(uri => this.handleDotEnvChange(uri.fsPath, collectionUid));
+    dotEnvWatcher.onDidChange(uri => this.handleDotEnvChange(uri.fsPath, collectionUid));
+    dotEnvWatcher.onDidDelete(uri => this.handleDotEnvUnlink(uri.fsPath, collectionUid));
 
     return [requestWatcher, envWatcher, configWatcher, ocYmlWatcher, dotEnvWatcher];
   }

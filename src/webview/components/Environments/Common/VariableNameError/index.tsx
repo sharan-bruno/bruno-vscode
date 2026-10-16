@@ -1,9 +1,10 @@
 import React from 'react';
+import type { FormikProps } from 'formik';
 import { IconAlertCircle } from '@tabler/icons';
 import { Tooltip } from 'react-tooltip';
 
 interface VariableNameErrorProps {
-  formik: any;
+  formik: Pick<FormikProps<{ name?: string | null }[]>, 'values' | 'getFieldMeta'>;
   name: string;
   index: number;
 }

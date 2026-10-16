@@ -399,8 +399,12 @@ export const isDotEnvFilename = (filename: string): boolean => {
 };
 
 export const isValidDotEnvFilename = (filename: string): boolean => {
-  if (!filename || typeof filename !== 'string') return false;
-  if (path.basename(filename) !== filename) return false;
+  if (!filename || typeof filename !== 'string') {
+    return false;
+  }
+  if (path.basename(filename) !== filename) {
+    return false;
+  }
   return filename === '.env' || /^\.env\.[a-zA-Z0-9._-]+$/.test(filename);
 };
 

@@ -65,19 +65,18 @@ test.describe('.env files', () => {
       await dotEnv.varNameInputs().last().fill('PORT');
       await dotEnv.save().click();
 
-      await expect(async () => {
-        expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('PORT=');
-      }).toPass();
-      expect(fs.readFileSync(dotEnvPath, 'utf8')).toContain('HOST=localhost');
+      await expect(environments.getByText('Changes saved successfully')).toBeVisible();
+      const content = fs.readFileSync(dotEnvPath, 'utf8');
+      expect(content).toContain('PORT=');
+      expect(content).toContain('HOST=localhost');
     });
 
     await test.step('deleting the file removes it from disk and from the list', async () => {
       await dotEnv.deleteFile().click();
       await buildCommonLocators(environments).modal.confirm().click();
 
-      await expect(async () => {
-        expect(fs.existsSync(dotEnvPath)).toBe(false);
-      }).toPass();
+      await expect(environments.getByText('.env file deleted!')).toBeVisible();
+      expect(fs.existsSync(dotEnvPath)).toBe(false);
       await expect(dotEnv.file('.env')).toBeHidden();
     });
   });
@@ -104,11 +103,10 @@ test.describe('.env files', () => {
     await test.step('saving from the raw view preserves comments and values', async () => {
       await dotEnv.saveRaw().click();
 
-      await expect(async () => {
-        const content = fs.readFileSync(dotEnvPath, 'utf8');
-        expect(content).toContain('# staging credentials');
-        expect(content).toContain('TOKEN=abc');
-      }).toPass();
+      await expect(environments.getByText('Changes saved successfully')).toBeVisible();
+      const content = fs.readFileSync(dotEnvPath, 'utf8');
+      expect(content).toContain('# staging credentials');
+      expect(content).toContain('TOKEN=abc');
     });
   });
 });
