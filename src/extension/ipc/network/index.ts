@@ -1,8 +1,8 @@
 
 import { AxiosResponse, AxiosError } from 'axios';
+import decomment from 'decomment';
 import { registerHandler, sendToWebview } from '../handlers';
 import { prepareRequest, BrunoRequest as PrepareRequestType } from './prepare-request';
-import decomment from 'decomment';
 import { interpolateVars } from './interpolate-vars';
 import { createAxiosInstance, AxiosInstanceOptions } from './axios-instance';
 import { saveCancelToken, deleteCancelToken, cancelTokens } from '../../utils/cancel-token';
