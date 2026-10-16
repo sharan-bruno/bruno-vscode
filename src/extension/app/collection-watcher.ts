@@ -51,8 +51,7 @@ const parseDotEnv = (content: string): Record<string, string> => {
 const dotEnvVariablesToArray = (envObject: Record<string, string>) => {
   return Object.entries(envObject).map(([name, value]) => ({
     name,
-    value,
-    enabled: true
+    value
   }));
 };
 

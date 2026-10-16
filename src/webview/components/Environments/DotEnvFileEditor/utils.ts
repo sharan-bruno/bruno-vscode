@@ -26,7 +26,7 @@ export const rawToVariables = (rawContent: string): DotEnvVariable[] => {
       value = value.replace(/\\n/g, '\n').replace(/\\r/g, '\r');
     }
 
-    variables.push({ uid: uuid(), name: match[1], value, enabled: true, secret: false });
+    variables.push({ uid: uuid(), name: match[1], value });
     match = lineMatcher.exec(lines);
   }
 

@@ -1,15 +1,7 @@
 import styled from 'styled-components';
 
 const StyledWrapper = styled.div`
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow: hidden;
-
   .raw-editor-container {
-    flex: 1;
-    overflow: hidden;
-    border-radius: 8px;
     border: solid 1px ${(props) => props.theme.border.border0};
 
     .CodeMirror {
@@ -18,32 +10,10 @@ const StyledWrapper = styled.div`
   }
 
   .table-container {
-    overflow-y: auto;
-    border-radius: 8px;
     border: solid 1px ${(props) => props.theme.border.border0};
   }
 
   table {
-    width: 100%;
-    border-collapse: collapse;
-    table-layout: fixed;
-    font-size: 12px;
-
-    td {
-      vertical-align: middle;
-      padding: 2px 10px;
-
-      &:first-child {
-        width: 35%;
-      }
-
-      &.delete-col {
-        width: 40px;
-        text-align: center;
-        padding: 2px 4px;
-      }
-    }
-
     thead {
       color: ${(props) => props.theme.table.thead.color} !important;
       background: ${(props) => props.theme.sidebar.bg};
@@ -51,7 +21,6 @@ const StyledWrapper = styled.div`
       user-select: none;
 
       td {
-        padding: 5px 10px !important;
         border-bottom: solid 1px ${(props) => props.theme.border.border0};
         border-right: solid 1px ${(props) => props.theme.border.border0};
 
@@ -63,8 +32,6 @@ const StyledWrapper = styled.div`
 
     tbody {
       tr {
-        transition: background 0.1s ease;
-
         &:last-child td {
           border-bottom: none;
         }
@@ -86,18 +53,7 @@ const StyledWrapper = styled.div`
   }
 
   input[type='text'] {
-    width: 100%;
-    border: 1px solid transparent;
-    outline: none !important;
-    background-color: transparent;
     color: ${(props) => props.theme.text};
-    padding: 0;
-    border-radius: 4px;
-    transition: all 0.15s ease;
-
-    &:focus {
-      outline: none !important;
-    }
   }
 
   button {

@@ -56,7 +56,7 @@ const DotEnvFileEditor = ({
       const errors: Record<number, { name: string }> = {};
       values.forEach((variable, index) => {
         const isLastRow = index === values.length - 1;
-        const isEmptyRow = !variable.name || variable.name.trim() === '';
+        const isEmptyRow = !variable.name?.trim();
 
         if (isLastRow && isEmptyRow) {
           return;
@@ -87,7 +87,9 @@ const DotEnvFileEditor = ({
   }, [content, savedValuesJson]);
 
   useEffect(() => {
-    if (viewMode === prevViewMode) return;
+    if (viewMode === prevViewMode) {
+      return;
+    }
     setPrevViewMode(viewMode);
 
     if (viewMode === 'raw') {
@@ -118,7 +120,7 @@ const DotEnvFileEditor = ({
     }
 
     const filteredValues = currentValues.filter((variable) => variable.uid !== id);
-    const lastFilteredRow = filteredValues[filteredValues.length - 1];
+    const lastFilteredRow = filteredValues.at(-1);
     const hasEmptyLastRow = filteredValues.length > 0 && (!lastFilteredRow.name || lastFilteredRow.name.trim() === '');
 
     formikRef.current.setValues(hasEmptyLastRow ? filteredValues : [...filteredValues, emptyRow()]);
@@ -212,7 +214,7 @@ const DotEnvFileEditor = ({
 
   if (viewMode === 'raw') {
     return (
-      <StyledWrapper>
+      <StyledWrapper className="flex flex-col flex-1 overflow-hidden">
         <DotEnvRawView
           collection={collection}
           theme={displayedTheme}
@@ -227,7 +229,7 @@ const DotEnvFileEditor = ({
   }
 
   return (
-    <StyledWrapper>
+    <StyledWrapper className="flex flex-col flex-1 overflow-hidden">
       <DotEnvTableView
         formik={formik}
         theme={displayedTheme}

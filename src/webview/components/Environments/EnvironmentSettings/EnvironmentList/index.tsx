@@ -31,6 +31,10 @@ const EMPTY_ARRAY: DotEnvFile[] = [];
 
 const DOTENV_NAME_PREFIX = '.env';
 
+// Allows `.env` or `.env.<suffix>` (e.g. `.env.local`), but not `.envrc`.
+// Keep in sync with isValidDotEnvFilename on the extension side.
+const DOTENV_FILENAME_REGEX = /^\.env(\.[a-zA-Z0-9._-]+)?$/;
+
 const EnvironmentList = ({
   environments,
   activeEnvironmentUid,
@@ -181,8 +185,8 @@ const EnvironmentList = ({
   useEffect(() => {
     if (!isCreatingDotEnvInline) return;
 
-    const handleClickOutside = (event: any) => {
-      if (dotEnvCreateContainerRef.current && !dotEnvCreateContainerRef.current.contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dotEnvCreateContainerRef.current && !dotEnvCreateContainerRef.current.contains(event.target as Node)) {
         handleCancelDotEnvCreate();
       }
     };
@@ -421,8 +425,7 @@ const EnvironmentList = ({
       return 'File name must start with .env';
     }
 
-    // Same rule as isValidDotEnvFilename on the extension side
-    if (!/^\.env(\.[a-zA-Z0-9._-]+)?$/.test(name)) {
+    if (!DOTENV_FILENAME_REGEX.test(name)) {
       return 'File name must be .env or .env.<suffix>';
     }
 
@@ -455,7 +458,7 @@ const EnvironmentList = ({
       });
   };
 
-  const handleDotEnvNameChange = (e: any) => {
+  const handleDotEnvNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setNewDotEnvName(value.startsWith(DOTENV_NAME_PREFIX) ? value : DOTENV_NAME_PREFIX);
     if (dotEnvNameError) {

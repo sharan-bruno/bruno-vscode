@@ -13,7 +13,7 @@ interface DotEnvRawViewProps {
 
 const DotEnvRawView = ({ collection, theme, value, onChange, onSave, onReset, isSaving }: DotEnvRawViewProps) => (
   <>
-    <div className="raw-editor-container" data-testid="dotenv-raw-editor">
+    <div className="raw-editor-container flex-1 overflow-hidden rounded-lg" data-testid="dotenv-raw-editor">
       <CodeEditor
         collection={collection}
         theme={theme}

@@ -29,13 +29,13 @@ const DotEnvTableView = ({
   isSaving
 }: DotEnvTableViewProps) => (
   <>
-    <div className="table-container">
-      <table>
+    <div className="table-container overflow-y-auto rounded-lg">
+      <table className="w-full border-collapse table-fixed text-[12px]">
         <thead>
           <tr>
-            <td>Name</td>
-            <td>Value</td>
-            <td className="delete-col"></td>
+            <td className="w-[35%] px-[10px] py-[5px]">Name</td>
+            <td className="px-[10px] py-[5px]">Value</td>
+            <td className="w-10 px-[10px] py-[5px]"></td>
           </tr>
         </thead>
         <tbody>
@@ -46,7 +46,7 @@ const DotEnvTableView = ({
 
             return (
               <tr key={variable.uid} data-testid={`dotenv-var-row-${variable.name}`}>
-                <td>
+                <td className="align-middle px-[10px] py-[2px]">
                   <div className="flex items-center">
                     <input
                       type="text"
@@ -54,7 +54,7 @@ const DotEnvTableView = ({
                       autoCorrect="off"
                       autoCapitalize="off"
                       spellCheck="false"
-                      className="mousetrap"
+                      className="mousetrap w-full p-0 bg-transparent border border-transparent rounded !outline-none transition-all duration-150"
                       id={`${index}.name`}
                       name={`${index}.name`}
                       value={variable.name}
@@ -66,7 +66,7 @@ const DotEnvTableView = ({
                     <VariableNameError formik={formik} name={`${index}.name`} index={index} />
                   </div>
                 </td>
-                <td className="flex flex-row flex-nowrap items-center">
+                <td className="flex flex-row flex-nowrap items-center px-[10px] py-[2px]">
                   <div className="overflow-hidden grow w-full relative">
                     <MultiLineEditor
                       theme={theme}
@@ -77,7 +77,7 @@ const DotEnvTableView = ({
                     />
                   </div>
                 </td>
-                <td className="delete-col">
+                <td className="w-10 px-1 py-[2px] align-middle text-center">
                   {!isLastEmptyRow && (
                     <button type="button" aria-label="Delete variable" onClick={() => onRemoveVar(variable.uid)}>
                       <IconTrash strokeWidth={1.5} size={18} />
