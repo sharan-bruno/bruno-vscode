@@ -28,7 +28,7 @@ describe('prepareBody strips comments from a json body', () => {
     });
   });
 
-  it('matches the desktop app for a commented body', () => {
+  it('keeps the original formatting after removing a comment', () => {
     const json = '{\n  // Line comment\n  "name" : "bruno"\n}';
     expect(prepareBody({ mode: 'json', json }, {})).toBe('{\n  "name" : "bruno"\n}');
   });
