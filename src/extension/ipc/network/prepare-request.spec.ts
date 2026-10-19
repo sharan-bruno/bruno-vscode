@@ -7,7 +7,7 @@ describe('prepareBody strips comments from a json body', () => {
     expect(prepareBody({ mode: 'json', json }, {})).toBe(json);
   });
 
-  it('strips // and /* */ comments but keeps them inside string values', () => {
+  it('strips // and /* */ comments', () => {
     const json = `{
   // line comment
   "name": "bruno", /* inline block comment */
@@ -36,6 +36,9 @@ describe('prepareBody strips comments from a json body', () => {
   it('sends no body when the json is nothing but comments', () => {
     const json = '// {\n//   // Line comment\n//   "name" : "bruno"\n// }';
     expect(prepareBody({ mode: 'json', json }, {})).toBeUndefined();
+  });
+
+  it('sends no body when json is empty', () => {
     expect(prepareBody({ mode: 'json', json: '' }, {})).toBeUndefined();
   });
 
