@@ -88,7 +88,8 @@ const prepareBody = (body: BrunoRequest['body'], headers: Record<string, string>
     case 'json':
       headers['content-type'] = headers['content-type'] || 'application/json';
       try {
-        return body.json ? JSON.parse(decomment(body.json)) : undefined;
+        const json = body.json ? decomment(body.json) : '';
+        return json.trim() ? json : undefined;
       } catch {
         return body.json;
       }
