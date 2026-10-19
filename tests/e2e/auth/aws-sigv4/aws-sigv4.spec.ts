@@ -25,7 +25,7 @@ test.describe('AWS Signature V4 auth', () => {
     await test.step('Create a collection and a request', async () => {
       await createCollection(page, sidebar, collectionName, tmpDir);
       const panel = await openNewRequestPanel(page, sidebar, collectionName);
-      await createRequest(page, panel, sidebar, collectionName, requestName, 'http://127.0.0.1:8081/ping');
+      await createRequest(page, panel, sidebar, collectionName, requestName, 'http://127.0.0.1:8081/api/echo/auth');
     });
 
     await test.step('Set auth type as AWS Sig V4 and fill in the credentials', async () => {
@@ -42,6 +42,12 @@ test.describe('AWS Signature V4 auth', () => {
     await test.step('Send the request and verify the response status code is 200', async () => {
       const editor = await openRequest(page, sidebar, collectionName, requestName);
       await sendRequest(editor, 200);
+    });
+
+    await test.step('Verify the server received the signed Authorization header, so AWS would not return MissingAuthenticationToken', async () => {
+      const body = locators.response.previewContainer();
+      await expect(body).toContainText('AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/');
+      await expect(body).not.toContainText('MissingAuthenticationToken');
     });
 
     await test.step('Open the latest timeline entry and verify the signature headers were sent', async () => {
