@@ -111,7 +111,7 @@ const TimelineItem = ({
             <div className="tl-panel">
               {visitedTabs.request && (
                 <div style={{ display: activeTab === 'request' ? 'block' : 'none' }} data-testid="timeline-panel-request">
-                  <Request request={request} item={item} collection={collection} />
+                  <Request request={request} item={item} collection={collection} response={response} />
                 </div>
               )}
               {visitedTabs.response && (
