@@ -18,6 +18,7 @@ export const buildCommonLocators = (frame: FrameLike) => ({
         .locator(`#collection-${name.replace(/\s+/g, '-').toLowerCase()}`)
         .getByTestId(`sidebar-collection-row-${name}`),
     collectionItem: (name: string) => frame.getByTestId(`sidebar-collection-item-row-${name}`),
+    collectionItems: () => frame.getByTestId(/^sidebar-collection-item-row-/),
     folder: (name: string) => frame.getByTestId(`sidebar-collection-item-row-${name}`),
     folderChevron: (name: string) => frame.getByTestId(`folder-chevron-${name}`),
     addMenu: () => frame.getByTestId('collections-header-add-menu'),
