@@ -6,7 +6,7 @@ import {
   openBrunoSidebar,
   openTransientRequest,
   sendRequest,
-  setCodeMirrorValue
+  setRequestUrl
 } from '../../utils/page/actions';
 import { buildCommonLocators } from '../../utils/page/locators';
 import { TEST_SERVER } from '../../utils/urls';
@@ -30,16 +30,14 @@ test.describe('Undo after closing a transient request', () => {
     let panel = await openTransientRequest(page, sidebar, collectionName);
     let locators = buildCommonLocators(panel);
 
-    const setUrl = (url: string) => setCodeMirrorValue(page, locators.requestUrl.editor().locator('.CodeMirror'), url);
-
     await test.step('Send a 1s delay request and wait until it finishes', async () => {
-      await setUrl(`${TEST_SERVER}/delay/1000`);
+      await setRequestUrl(page, panel, `${TEST_SERVER}/delay/1000`);
       await sendRequest(panel, 200);
       await expect(locators.response.loadingOverlay()).toBeHidden();
     });
 
     await test.step('Send a 3s delay request and wait for the loading overlay', async () => {
-      await setUrl(`${TEST_SERVER}/delay/3000`);
+      await setRequestUrl(page, panel, `${TEST_SERVER}/delay/3000`);
       await locators.sendRequest().click();
       await expect(locators.response.loadingOverlay()).toBeVisible();
     });
@@ -48,7 +46,7 @@ test.describe('Undo after closing a transient request', () => {
       panel = await closeAndUndo(page, sidebar);
       locators = buildCommonLocators(panel);
       await expect(locators.response.loadingOverlay()).toBeHidden();
-      await setUrl(`${TEST_SERVER}/ping`);
+      await setRequestUrl(page, panel, `${TEST_SERVER}/ping`);
       await sendRequest(panel, 200);
     });
   });
