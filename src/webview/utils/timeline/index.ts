@@ -6,7 +6,8 @@ export interface SentHeader {
 }
 
 /** Headers sent on the final hop. A redirect logs one `requestHeader` block per hop, and only the last reached the responding server. */
-export const sentHeadersFromTimeline = (timeline?: NetworkLogEntry[] | null): SentHeader[] => {
+export const getRequestHeaders = (timeline?: NetworkLogEntry[] | null): SentHeader[] => {
+  console.log("timeline", timeline)
   if (!Array.isArray(timeline)) {
     return [];
   }
