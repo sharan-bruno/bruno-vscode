@@ -67,7 +67,12 @@ function addAwsV4Interceptor(axiosInstance: AxiosInstance, request: RequestWithA
     }
   });
 
-  axiosInstance.interceptors.request.use(interceptor);
+  axiosInstance.interceptors.request.use((config) => {
+    if ((config as { __skipAwsV4Sign?: boolean }).__skipAwsV4Sign) {
+      return config;
+    }
+    return interceptor(config);
+  });
 }
 
 export { addAwsV4Interceptor, resolveAwsV4Credentials };

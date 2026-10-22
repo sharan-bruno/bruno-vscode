@@ -19,13 +19,14 @@ test.describe('AWS Signature V4 auth', () => {
   test('Signs the request and shows the authentication in the timeline', async ({ page, tmpDir }) => {
     const collectionName = 'aws-sigv4-collection';
     const requestName = 'signed-request';
+    const baseUrl = 'http://127.0.0.1:8081';
     const sidebar = await openBrunoSidebar(page);
     const locators = buildCommonLocators(activeEditor(page));
 
     await test.step('Create a collection and a request', async () => {
       await createCollection(page, sidebar, collectionName, tmpDir);
       const panel = await openNewRequestPanel(page, sidebar, collectionName);
-      await createRequest(page, panel, sidebar, collectionName, requestName, 'http://127.0.0.1:8081/api/echo/auth');
+      await createRequest(page, panel, sidebar, collectionName, requestName, `${baseUrl}/api/echo/auth`);
     });
 
     await test.step('Set auth type as AWS Sig V4 and fill in the credentials', async () => {

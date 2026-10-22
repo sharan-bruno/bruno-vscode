@@ -5,8 +5,7 @@ export interface SentHeader {
   value: string;
 }
 
-/** Headers actually sent, from the timeline's `requestHeader` entries. A followed redirect logs one
- *  block per hop into the same timeline, so only the last block reached the server that responded. */
+/** Headers sent on the final hop. A redirect logs one `requestHeader` block per hop, and only the last reached the responding server. */
 export const sentHeadersFromTimeline = (timeline?: NetworkLogEntry[] | null): SentHeader[] => {
   if (!Array.isArray(timeline)) {
     return [];
@@ -15,14 +14,11 @@ export const sentHeadersFromTimeline = (timeline?: NetworkLogEntry[] | null): Se
   const headers: SentHeader[] = [];
   let foundBlock = false;
 
-  /** Run the loop in backward to get latest `requestHeader` run: on a redirect each hop logs its own run, and the
-   *  last one is the request that returned this response. `unshift` restores wire order */
+  // Scan backward: the first header opens the last hop's block, the next non-header ends it. `unshift` restores wire order.
   for (let i = timeline.length - 1; i >= 0; i--) {
     const item = timeline[i];
     const isHeader = item?.type === 'requestHeader';
 
-    /** we go in backward as the first header found opens the last hop's run and the next non-header
-     *  closes it, so the earlier hops above it are left alone. */
     if (foundBlock && !isHeader) {
       break;
     }

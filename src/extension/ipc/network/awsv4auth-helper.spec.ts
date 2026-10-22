@@ -5,7 +5,6 @@ import { addAwsV4Interceptor, resolveAwsV4Credentials, AwsV4Config } from './aws
 const fromIni = vi.hoisted(() => vi.fn());
 vi.mock('@aws-sdk/credential-providers', () => ({ fromIni }));
 
-/** Resolves with the final request config so the signed headers can be inspected. */
 const echoAdapter: AxiosAdapter = (config: InternalAxiosRequestConfig) =>
   Promise.resolve({ data: '', status: 200, statusText: 'OK', headers: {}, config } as AxiosResponse);
 
