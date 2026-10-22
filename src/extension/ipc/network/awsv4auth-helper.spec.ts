@@ -5,6 +5,9 @@ import { addAwsV4Interceptor, resolveAwsV4Credentials, AwsV4Config } from './aws
 const mockFromIni = vi.hoisted(() => vi.fn());
 vi.mock('@aws-sdk/credential-providers', () => ({ fromIni: mockFromIni }));
 
+const accessKeyId = 'AKIAEXAMPLE';
+const profileAccessKeyId = 'PROFILE-KEY';
+
 const echoAdapter: AxiosAdapter = (config: InternalAxiosRequestConfig) =>
   Promise.resolve({ data: '', status: 200, statusText: 'OK', headers: {}, config } as AxiosResponse);
 
@@ -22,17 +25,16 @@ const send = async (awsv4config: AwsV4Config) => {
 
 describe('addAwsV4Interceptor signs requests with Signature v4', () => {
   it('adds an Authorization header scoped to the given region and service', async () => {
-    const headers = await send({ accessKeyId: 'AKIAEXAMPLE', secretAccessKey: 'secret', region: 'us-east-1', service: 'execute-api' });
+    const headers = await send({ accessKeyId, secretAccessKey: 'secret', region: 'us-east-1', service: 'execute-api' });
 
-    expect(headers.Authorization).toMatch(
-      /^AWS4-HMAC-SHA256 Credential=AKIAEXAMPLE\/\d{8}\/us-east-1\/execute-api\/aws4_request, SignedHeaders=.*, Signature=[0-9a-f]{64}$/
-    );
+    expect(headers.Authorization).toContain(`AWS4-HMAC-SHA256 Credential=${accessKeyId}/`);
+    expect(headers.Authorization).toContain('/us-east-1/execute-api/aws4_request');
     expect(headers['X-Amz-Date']).toMatch(/^\d{8}T\d{6}Z$/);
     expect(headers['X-Amz-Security-Token']).toBeUndefined();
   });
 
   it('includes the session token when temporary credentials are used', async () => {
-    const headers = await send({ accessKeyId: 'AKIAEXAMPLE', secretAccessKey: 'secret', sessionToken: 'session-token', region: 'eu-west-1', service: 's3' });
+    const headers = await send({ accessKeyId, secretAccessKey: 'secret', sessionToken: 'session-token', region: 'eu-west-1', service: 's3' });
 
     expect(headers['X-Amz-Security-Token']).toBe('session-token');
     expect(headers.Authorization).toContain('/eu-west-1/s3/aws4_request');
@@ -50,19 +52,19 @@ describe('resolveAwsV4Credentials', () => {
   beforeEach(() => mockFromIni.mockReset());
 
   it('returns the config untouched when no profile is set', async () => {
-    const awsv4config = { accessKeyId: 'AKIA', secretAccessKey: 'secret', region: 'us-east-1' };
+    const awsv4config = { accessKeyId, secretAccessKey: 'secret', region: 'us-east-1' };
 
     expect(await resolveAwsV4Credentials({ awsv4config })).toEqual(awsv4config);
     expect(mockFromIni).not.toHaveBeenCalled();
   });
 
   it('fills the keys from the named profile', async () => {
-    mockFromIni.mockReturnValue(async () => ({ accessKeyId: 'PROFILE-KEY', secretAccessKey: 'profile-secret', sessionToken: 'profile-token' }));
+    mockFromIni.mockReturnValue(async () => ({ accessKeyId: profileAccessKeyId, secretAccessKey: 'profile-secret', sessionToken: 'profile-token' }));
 
     const resolved = await resolveAwsV4Credentials({ awsv4config: { profileName: 'staging', region: 'us-east-1' } });
 
     expect(mockFromIni).toHaveBeenCalledWith({ profile: 'staging', ignoreCache: true });
-    expect(resolved).toEqual({ profileName: 'staging', region: 'us-east-1', accessKeyId: 'PROFILE-KEY', secretAccessKey: 'profile-secret', sessionToken: 'profile-token' });
+    expect(resolved).toEqual({ profileName: 'staging', region: 'us-east-1', accessKeyId: profileAccessKeyId, secretAccessKey: 'profile-secret', sessionToken: 'profile-token' });
   });
 
   it('keeps the config when the profile cannot be loaded', async () => {

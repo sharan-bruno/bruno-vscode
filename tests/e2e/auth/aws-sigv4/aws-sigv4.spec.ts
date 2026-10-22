@@ -20,6 +20,10 @@ test.describe('AWS Signature V4 auth', () => {
   test('Signs the request and shows the authentication in the timeline', async ({ page, tmpDir }) => {
     const collectionName = 'aws-sigv4-collection';
     const requestName = 'signed-request';
+    const accessKeyId = 'AKIAIOSFODNN7EXAMPLE';
+    const secretAccessKey = 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY';
+    const service = 'execute-api';
+    const region = 'us-east-1';
     const sidebar = await openBrunoSidebar(page);
     const locators = buildCommonLocators(activeEditor(page));
 
@@ -33,10 +37,10 @@ test.describe('AWS Signature V4 auth', () => {
       await openRequest(page, sidebar, collectionName, requestName);
       await selectRequestPaneTab(page, 'Auth');
       await selectAuthMode(page, 'AWS Sig V4');
-      await setCodeMirrorValue(page, locators.auth.awsAccessKeyIdEditor(), 'AKIAIOSFODNN7EXAMPLE');
-      await setCodeMirrorValue(page, locators.auth.awsSecretAccessKeyEditor(), 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY');
-      await setCodeMirrorValue(page, locators.auth.awsServiceEditor(), 'execute-api');
-      await setCodeMirrorValue(page, locators.auth.awsRegionEditor(), 'us-east-1');
+      await setCodeMirrorValue(page, locators.auth.awsAccessKeyIdEditor(), accessKeyId);
+      await setCodeMirrorValue(page, locators.auth.awsSecretAccessKeyEditor(), secretAccessKey);
+      await setCodeMirrorValue(page, locators.auth.awsServiceEditor(), service);
+      await setCodeMirrorValue(page, locators.auth.awsRegionEditor(), region);
       await saveRequest(page);
     });
 
@@ -47,7 +51,7 @@ test.describe('AWS Signature V4 auth', () => {
 
     await test.step('Verify the server received the signed Authorization header, so AWS would not return MissingAuthenticationToken', async () => {
       const body = locators.response.previewContainer();
-      await expect(body).toContainText('AWS4-HMAC-SHA256 Credential=AKIAIOSFODNN7EXAMPLE/');
+      await expect(body).toContainText(`AWS4-HMAC-SHA256 Credential=${accessKeyId}/`);
       await expect(body).not.toContainText('MissingAuthenticationToken');
     });
 

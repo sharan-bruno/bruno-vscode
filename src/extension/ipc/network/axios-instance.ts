@@ -313,6 +313,7 @@ const createAxiosInstance = (options: AxiosInstanceOptions = {}): AxiosInstance 
         
         if (!isSameOrigin(originalRequest.url || '', redirectUrl)) {
           for (const name of Object.keys(requestConfig.headers || {})) {
+            // Header names starting with x-amz- (any case), such as X-Amz-Date and X-Amz-Security-Token, belong to the AWS signature
             if (/^x-amz-/i.test(name)) {
               delete (requestConfig.headers as Record<string, unknown>)[name];
             }

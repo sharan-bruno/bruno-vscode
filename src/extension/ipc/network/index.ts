@@ -466,6 +466,7 @@ const executeRequest = async (
     if (request.awsv4config) {
       request.awsv4config = await resolveAwsV4Credentials(request);
       addAwsV4Interceptor(axiosInstance, request);
+      // The interceptor already holds the credentials, so drop them from the request object
       delete request.awsv4config;
     }
 
