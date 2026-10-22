@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import axios, { AxiosAdapter, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { addAwsV4Interceptor, resolveAwsV4Credentials, AwsV4Config } from './awsv4auth-helper';
 
-const fromIni = vi.hoisted(() => vi.fn());
-vi.mock('@aws-sdk/credential-providers', () => ({ fromIni }));
+const mockFromIni = vi.hoisted(() => vi.fn());
+vi.mock('@aws-sdk/credential-providers', () => ({ fromIni: mockFromIni }));
 
 const echoAdapter: AxiosAdapter = (config: InternalAxiosRequestConfig) =>
   Promise.resolve({ data: '', status: 200, statusText: 'OK', headers: {}, config } as AxiosResponse);
@@ -47,26 +47,26 @@ describe('addAwsV4Interceptor signs requests with Signature v4', () => {
 });
 
 describe('resolveAwsV4Credentials', () => {
-  beforeEach(() => fromIni.mockReset());
+  beforeEach(() => mockFromIni.mockReset());
 
   it('returns the config untouched when no profile is set', async () => {
     const awsv4config = { accessKeyId: 'AKIA', secretAccessKey: 'secret', region: 'us-east-1' };
 
     expect(await resolveAwsV4Credentials({ awsv4config })).toEqual(awsv4config);
-    expect(fromIni).not.toHaveBeenCalled();
+    expect(mockFromIni).not.toHaveBeenCalled();
   });
 
   it('fills the keys from the named profile', async () => {
-    fromIni.mockReturnValue(async () => ({ accessKeyId: 'PROFILE-KEY', secretAccessKey: 'profile-secret', sessionToken: 'profile-token' }));
+    mockFromIni.mockReturnValue(async () => ({ accessKeyId: 'PROFILE-KEY', secretAccessKey: 'profile-secret', sessionToken: 'profile-token' }));
 
     const resolved = await resolveAwsV4Credentials({ awsv4config: { profileName: 'staging', region: 'us-east-1' } });
 
-    expect(fromIni).toHaveBeenCalledWith({ profile: 'staging', ignoreCache: true });
+    expect(mockFromIni).toHaveBeenCalledWith({ profile: 'staging', ignoreCache: true });
     expect(resolved).toEqual({ profileName: 'staging', region: 'us-east-1', accessKeyId: 'PROFILE-KEY', secretAccessKey: 'profile-secret', sessionToken: 'profile-token' });
   });
 
   it('keeps the config when the profile cannot be loaded', async () => {
-    fromIni.mockReturnValue(async () => {
+    mockFromIni.mockReturnValue(async () => {
       throw new Error('Profile staging not found');
     });
     const awsv4config = { profileName: 'staging', region: 'us-east-1' };
