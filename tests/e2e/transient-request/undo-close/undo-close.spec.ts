@@ -9,7 +9,7 @@ import {
   setRequestUrl
 } from '../../utils/page/actions';
 import { buildCommonLocators } from '../../utils/page/locators';
-import { TEST_SERVER } from '../../utils/urls';
+import { TEST_SERVER_LOCAL_URL } from '../../utils/urls';
 
 test.use({ vscodeSettings: { 'files.simpleDialog.enable': true } });
 
@@ -31,13 +31,13 @@ test.describe('Undo after closing a transient request', () => {
     let locators = buildCommonLocators(panel);
 
     await test.step('Send a 1s delay request and wait until it finishes', async () => {
-      await setRequestUrl(page, panel, `${TEST_SERVER}/delay/1000`);
+      await setRequestUrl(page, panel, `${TEST_SERVER_LOCAL_URL}/delay/1000`);
       await sendRequest(panel, 200);
       await expect(locators.response.loadingOverlay()).toBeHidden();
     });
 
     await test.step('Send a 3s delay request and wait for the loading overlay', async () => {
-      await setRequestUrl(page, panel, `${TEST_SERVER}/delay/3000`);
+      await setRequestUrl(page, panel, `${TEST_SERVER_LOCAL_URL}/delay/3000`);
       await locators.sendRequest().click();
       await expect(locators.response.loadingOverlay()).toBeVisible();
     });
@@ -46,7 +46,7 @@ test.describe('Undo after closing a transient request', () => {
       panel = await closeAndUndo(page, sidebar);
       locators = buildCommonLocators(panel);
       await expect(locators.response.loadingOverlay()).toBeHidden();
-      await setRequestUrl(page, panel, `${TEST_SERVER}/ping`);
+      await setRequestUrl(page, panel, `${TEST_SERVER_LOCAL_URL}/ping`);
       await sendRequest(panel, 200);
     });
   });
