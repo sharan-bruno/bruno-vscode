@@ -1,11 +1,11 @@
 import { describe, test, expect } from 'vitest';
 import type { NetworkLogEntry } from '@bruno-types';
-import { sentHeadersFromTimeline } from './index';
+import { getRequestHeaders } from './index';
 
 const addEntry = (type: NetworkLogEntry['type'], message?: string): NetworkLogEntry => ({ timestamp: new Date(), type, message });
 const addHeader = (message: string) => addEntry('requestHeader', message);
 
-describe('sentHeadersFromTimeline', () => {
+describe('getRequestHeaders', () => {
   test('returns the sent headers in wire order, ignoring response headers', () => {
     const timeline = [
       addEntry('request', 'GET /items'),
@@ -15,7 +15,7 @@ describe('sentHeadersFromTimeline', () => {
       addEntry('responseHeader', 'content-type: text/plain')
     ];
 
-    expect(sentHeadersFromTimeline(timeline)).toEqual([
+    expect(getRequestHeaders(timeline)).toEqual([
       { name: 'Host', value: 'example.com' },
       { name: 'Authorization', value: 'AWS4-HMAC-SHA256 Credential=abc, Signature=def' }
     ]);
@@ -32,11 +32,11 @@ describe('sentHeadersFromTimeline', () => {
       addEntry('response', 'HTTP/1.1 200 OK')
     ];
 
-    expect(sentHeadersFromTimeline(timeline)).toEqual([{ name: 'Host', value: '127.0.0.1' }]);
+    expect(getRequestHeaders(timeline)).toEqual([{ name: 'Host', value: '127.0.0.1' }]);
   });
 
   test('returns an empty list when there are no sent headers', () => {
-    expect(sentHeadersFromTimeline([addEntry('request', 'GET /x')])).toEqual([]);
-    expect(sentHeadersFromTimeline(undefined)).toEqual([]);
+    expect(getRequestHeaders([addEntry('request', 'GET /x')])).toEqual([]);
+    expect(getRequestHeaders(undefined)).toEqual([]);
   });
 });
