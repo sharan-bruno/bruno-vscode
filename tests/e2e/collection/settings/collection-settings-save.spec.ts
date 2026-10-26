@@ -48,7 +48,7 @@ test.describe('Collection settings save', () => {
     const settings = await stageSettingsEdits(page, tmpDir, 'Yml Settings', 'yml');
 
     await recordIpcCalls(settings);
-    await saveCollectionSettings(settings, 'headers');
+    await saveCollectionSettings(settings, 'presets');
 
     const configFile = path.join(findCollectionDir(tmpDir, 'opencollection.yml'), 'opencollection.yml');
     const read = () => fs.readFileSync(configFile, 'utf8');
@@ -79,7 +79,7 @@ test.describe('Collection settings save', () => {
     const settings = await stageSettingsEdits(page, tmpDir, 'Bru Settings', 'bru');
 
     await recordIpcCalls(settings);
-    await saveCollectionSettings(settings, 'headers');
+    await saveCollectionSettings(settings, 'presets');
 
     const collectionDir = findCollectionDir(tmpDir, 'bruno.json');
     const brunoJson = path.join(collectionDir, 'bruno.json');

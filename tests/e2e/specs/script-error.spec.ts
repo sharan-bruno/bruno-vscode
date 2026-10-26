@@ -7,6 +7,8 @@ import {
   openBrunoSidebar,
   createCollection,
   createFolder,
+  openNewRequestPanel,
+  createRequest,
   openRequest,
   sendRequest,
   findCollectionDir,
@@ -264,11 +266,8 @@ test.describe('Script errors in the response pane', () => {
     await createCollection(page, sidebar, collectionName, tmpDir, 'bru');
     await createFolder(sidebar, collectionName, 'sub');
 
-    const collectionDir = findCollectionDir(tmpDir);
-    fs.writeFileSync(path.join(collectionDir, 'sub', 'Boom.bru'), [
-      'meta {', '  name: Boom', '  type: http', '  seq: 1', '}', '',
-      'get {', `  url: ${TEST_SERVER}/capture`, '  body: none', '  auth: inherit', '}', ''
-    ].join('\n'), 'utf8');
+    const newRequestPanel = await openNewRequestPanel(page, sidebar, 'sub', true);
+    await createRequest(page, newRequestPanel, sidebar, collectionName, 'Boom', `${TEST_SERVER}/capture`);
 
     await buildCommonLocators(sidebar).sidebar.collectionItem('sub').click();
 
