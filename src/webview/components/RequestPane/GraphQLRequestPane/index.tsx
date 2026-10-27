@@ -115,7 +115,7 @@ const GraphQLRequestPane = ({
   );
 
   const indicators: Record<string, React.ReactNode> = useMemo(() => ({
-    auth: hasAuth ? <StatusDot dataTestId="auth" /> : null,
+    auth: hasAuth ? <StatusDot testId="auth" /> : null,
   }), [hasAuth]);
 
   const allTabs = useMemo(

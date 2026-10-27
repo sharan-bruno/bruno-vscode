@@ -108,15 +108,15 @@ const HttpRequestPane = ({
 
     return {
       params: activeCounts.params > 0 ? <sup className="font-medium">{activeCounts.params}</sup> : null,
-      body: body.mode !== 'none' ? <StatusDot dataTestId="body" /> : null,
+      body: body.mode !== 'none' ? <StatusDot testId="body" /> : null,
       headers: activeCounts.headers > 0 ? <sup className="font-medium">{activeCounts.headers}</sup> : null,
-      auth: hasAuth ? <StatusDot dataTestId="auth" /> : null,
+      auth: hasAuth ? <StatusDot testId="auth" /> : null,
       vars: activeCounts.vars > 0 ? <sup className="font-medium">{activeCounts.vars}</sup> : null,
-      script: (script.req || script.res) ? (hasScriptError ? <StatusDot type="error" dataTestId="script" /> : <StatusDot dataTestId="script" />) : null,
+      script: (script.req || script.res) ? (hasScriptError ? <StatusDot type="error" testId="script" /> : <StatusDot testId="script" />) : null,
       assert: activeCounts.assertions > 0 ? <sup className="font-medium">{activeCounts.assertions}</sup> : null,
-      tests: tests?.length > 0 ? (hasTestError ? <StatusDot type="error" dataTestId="tests" /> : <StatusDot dataTestId="tests" />) : null,
-      docs: docs?.length > 0 ? <StatusDot dataTestId="docs" /> : null,
-      settings: tags?.length > 0 ? <StatusDot dataTestId="settings" /> : null
+      tests: tests?.length > 0 ? (hasTestError ? <StatusDot type="error" testId="tests" /> : <StatusDot testId="tests" />) : null,
+      docs: docs?.length > 0 ? <StatusDot testId="docs" /> : null,
+      settings: tags?.length > 0 ? <StatusDot testId="settings" /> : null
     };
   }, [activeCounts, body.mode, hasAuth, script, item.preRequestScriptErrorMessage, item.postResponseScriptErrorMessage, item.testScriptErrorMessage, tests, docs, tags]);
 

@@ -102,7 +102,7 @@ const GrpcRequestPane = ({
             isClientStreaming ? (
               <sup className="ml-[.125rem] font-medium">{grpcMessagesCount}</sup>
             ) : (
-              <StatusDot dataTestId="body" />
+              <StatusDot testId="body" />
             )
           )}
         </div>
@@ -112,11 +112,11 @@ const GrpcRequestPane = ({
         </div>
         <div className={getTabClassname('auth')} role="tab" data-testid="grpc-request-tab-auth" onClick={() => selectTab('auth')}>
           Auth
-          {hasAuth && <StatusDot type="default" dataTestId="auth" />}
+          {hasAuth && <StatusDot type="default" testId="auth" />}
         </div>
         <div className={getTabClassname('docs')} role="tab" data-testid="grpc-request-tab-docs" onClick={() => selectTab('docs')}>
           Docs
-          {docs && docs.length > 0 && <StatusDot type="default" dataTestId="docs" />}
+          {docs && docs.length > 0 && <StatusDot type="default" testId="docs" />}
         </div>
       </div>
       <section

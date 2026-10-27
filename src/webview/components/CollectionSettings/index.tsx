@@ -117,27 +117,27 @@ const CollectionSettings = ({
         </div>
         <div className={getTabClassname('auth')} role="tab" onClick={() => setTab('auth')}>
           Auth
-          {authMode !== 'none' && <StatusDot dataTestId="auth" />}
+          {authMode !== 'none' && <StatusDot testId="auth" />}
         </div>
         <div className={getTabClassname('script')} role="tab" onClick={() => setTab('script')}>
           Script
-          {hasScripts && <StatusDot dataTestId="script" />}
+          {hasScripts && <StatusDot testId="script" />}
         </div>
         <div className={getTabClassname('tests')} role="tab" onClick={() => setTab('tests')}>
           Tests
-          {hasTests && <StatusDot dataTestId="tests" />}
+          {hasTests && <StatusDot testId="tests" />}
         </div>
         <div className={getTabClassname('presets')} role="tab" onClick={() => setTab('presets')}>
           Presets
-          {hasPresets && <StatusDot dataTestId="presets" />}
+          {hasPresets && <StatusDot testId="presets" />}
         </div>
         <div className={getTabClassname('client-certs')} role="tab" onClick={() => setTab('client-certs')}>
           Client Certificates
-          {hasClientCerts && <StatusDot dataTestId="client-certs" />}
+          {hasClientCerts && <StatusDot testId="client-certs" />}
         </div>
         <div className={getTabClassname('protobuf')} role="tab" onClick={() => setTab('protobuf')}>
           Protobuf
-          {protobufConfig.protoFiles && protobufConfig.protoFiles.length > 0 && <StatusDot dataTestId="protobuf" />}
+          {protobufConfig.protoFiles && protobufConfig.protoFiles.length > 0 && <StatusDot testId="protobuf" />}
         </div>
       </div>
       <section className="mt-4 flex-1 min-h-0 overflow-auto">{getTabPanel(tab)}</section>
