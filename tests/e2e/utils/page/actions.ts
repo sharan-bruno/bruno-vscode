@@ -1223,6 +1223,10 @@ export async function selectRequestPaneTab(page: Page, tabName: string): Promise
   await selectPaneTab(page, '.request-pane', tabName);
 }
 
+export async function pressSaveShortcut(page: Page): Promise<void> {
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+s' : 'Control+s');
+}
+
 export async function saveRequest(page: Page): Promise<void> {
   const saveShortcut = process.platform === 'darwin' ? 'Meta+s' : 'Control+s';
   await page.keyboard.press(saveShortcut);
