@@ -672,6 +672,7 @@ export const transformRequestToSaveToFilesystem = (item: any) => {
     uid: _item.uid,
     type: _item.type,
     name: _item.name,
+    // item.seq is the current position: a reorder updates it but not the draft, so the draft's seq can be stale.
     seq: item.seq ?? _item.seq ?? 1,
     settings: _item.settings,
     tags: _item.tags,

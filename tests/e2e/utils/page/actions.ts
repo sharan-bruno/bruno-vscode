@@ -809,7 +809,7 @@ export async function dragItemIntoFolder(
   await expect(folderRow).toBeVisible();
 
   // steps gives the sidebar a real drag; a single jump does not start one.
-  await locators.sidebar.itemName(itemName).dragTo(folderRow, { steps: 15 });
+  await locators.sidebar.collectionItemLabel(itemName).dragTo(folderRow, { steps: 15 });
 }
 
 export async function dragItemAboveOrBelow(
@@ -823,7 +823,7 @@ export async function dragItemAboveOrBelow(
   const targetRow = locators.sidebar.collectionItem(targetName);
   const targetPosition = { x: 50, y: position === 'above' ? 3 : 22 };
 
-  await locators.sidebar.itemName(itemName).dragTo(targetRow, { targetPosition, steps: 15 });
+  await locators.sidebar.collectionItemLabel(itemName).dragTo(targetRow, { targetPosition, steps: 15 });
 }
 
 /**

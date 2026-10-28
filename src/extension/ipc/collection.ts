@@ -1064,8 +1064,8 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
     }
   };
 
-  registerHandler('renderer:resequence-items', async (args) => {
-    const [itemsToResequence, collectionPathname] = args as [Array<{ type: string; pathname: string; seq: number }>, string];
+  registerHandler('renderer:resequence-items', async (args: [Array<{ type: string; pathname: string; seq: number }>, string]) => {
+    const [itemsToResequence, collectionPathname] = args;
 
     try {
       const format = getCollectionFormat(collectionPathname);
@@ -1079,12 +1079,11 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
           }
           // A folder keeps its order in its own folder.bru / folder.yml
           const folderFilePath = path.join(item.pathname, `folder.${format}`);
-          let folderJson: any = { meta: { name: path.basename(item.pathname) } };
-          if (fs.existsSync(folderFilePath)) {
-            folderJson = await parseFolder(fs.readFileSync(folderFilePath, 'utf8'), { format });
+          const folderJson = fs.existsSync(folderFilePath) ? await parseFolder(fs.readFileSync(folderFilePath, 'utf8'), { format }) : {};
+          // meta is missing when there is no folder file, or when a .bru folder file has no meta block
+          if (!folderJson.meta) {
+            folderJson.meta = { name: path.basename(item.pathname) };
           }
-          // A folder file can have no meta block
-          folderJson.meta = folderJson.meta || { name: path.basename(item.pathname) };
           folderJson.meta.seq = item.seq;
           await writeCollectionFile(folderFilePath, await stringifyFolder(folderJson, { format }));
         } else if (fs.existsSync(item.pathname)) {
