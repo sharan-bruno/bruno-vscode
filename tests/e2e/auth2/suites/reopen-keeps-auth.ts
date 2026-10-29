@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, sendAndExpect, reopenRequestAuth, expectAuthMode } from '../../utils/page/actions';
 
+export const desc = 'Saved request auth is still there after closing and reopening the request';
+
 export const workspace: Workspace = {
   collections: [
     {
@@ -12,8 +14,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Saved request auth is still there after closing and reopening the request';
 
 export async function run() {
   await setAuth('reopen-request', 'bearer', { token: 'your_secret_token' });

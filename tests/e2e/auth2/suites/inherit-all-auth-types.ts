@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, expectInherited, collectionName, authModeLabels } from '../../utils/page/actions';
 
+export const desc = 'A request inherits each auth type from a folder and from the collection';
+
 const authTypes = ['basic', 'bearer', 'digest', 'wsse', 'apikey'] as const;
 
 export const workspace: Workspace = {
@@ -17,8 +19,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'A request inherits each auth type from a folder and from the collection';
 
 export async function run() {
   await setAuth(collectionName, 'none');

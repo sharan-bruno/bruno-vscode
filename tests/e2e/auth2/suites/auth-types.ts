@@ -6,8 +6,9 @@ import { TEST_SERVER_LOCAL_URL } from '../../utils/urls';
 
 const accessKeyId = 'AKIAIOSFODNN7EXAMPLE';
 
-// Basic, Bearer and Cookie use the remote test server. AWS Sig v4 and API Key use the local one, which echoes
-// what it receives.
+export const desc = 'Basic, Bearer, Cookie, AWS Sig v4 and API Key each send what the server expects';
+
+// Basic, Bearer and Cookie use the remote test server. AWS Sig v4 and API Key use the local one, which echoes what it receives.
 export const workspace: Workspace = {
   collections: [
     {
@@ -25,8 +26,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Basic, Bearer, Cookie, AWS Sig v4 and API Key each send what the server expects';
 
 export async function run() {
   // Don't rely on a new request's default auth: the cookie requests must send no Authorization header

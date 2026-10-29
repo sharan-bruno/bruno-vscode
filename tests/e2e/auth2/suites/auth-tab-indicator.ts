@@ -3,6 +3,8 @@ import { activeEditor, openRequest, selectRequestPaneTab, setAuth, page, sidebar
 import { buildCommonLocators } from '../../utils/page/locators';
 import { Workspace } from '../../e2e-helper';
 
+export const desc = 'Auth tab dot reflects the effective auth for a folder and for a request';
+
 export const workspace: Workspace = {
   collections: [
     {
@@ -17,8 +19,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Auth tab dot reflects the effective auth for a folder and for a request';
 
 export async function run() {
   await setAuth(collectionName, 'none');

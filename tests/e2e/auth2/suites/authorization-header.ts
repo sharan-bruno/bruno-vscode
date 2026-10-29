@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, sendAndExpect } from '../../utils/page/actions';
 
+export const desc = 'Authorization header is sent when auth is set and dropped with No Auth';
+
 // /headers answers 200 whatever is sent, so the timeline is what shows whether auth went out.
 export const workspace: Workspace = {
   collections: [
@@ -13,8 +15,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Authorization header is sent when auth is set and dropped with No Auth';
 
 export async function run() {
   await setAuth('headers-request', 'basic', { username: 'bruno', password: 'della' });

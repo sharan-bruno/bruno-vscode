@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, expectInherited, collectionName } from '../../utils/page/actions';
 
+export const desc = 'Auth set on one folder does not leak into its sibling folder';
+
 export const workspace: Workspace = {
   collections: [
     {
@@ -17,8 +19,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Auth set on one folder does not leak into its sibling folder';
 
 export async function run() {
   await setAuth(collectionName, 'none');

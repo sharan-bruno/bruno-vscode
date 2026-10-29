@@ -1,6 +1,6 @@
 import { Frame, Page, expect } from "@playwright/test";
 import { test } from "./utils/fixtures";
-import { closeEditorTabIfOpen, createCollectionV2, createFolder, createRequestV2, deleteRequestV2, dragItemIntoFolder, exportCollectionV2, expandFolder, fillRequestDetails, openBrunoSidebar, removeCollection, runCommand, saveRequestV2, sendRequest, takeScreenshot, useCollection } from "./utils/page/actions";
+import { closeEditorTabIfOpen, createCollectionV2, createFolder, createRequestV2, deleteRequestV2, dragItemIntoFolder, exportCollectionV2, expandFolder, fillRequestDetails, openBrunoSidebar, removeActiveCollection, runCommand, saveRequestV2, sendRequest, takeScreenshot, useCollection } from "./utils/page/actions";
 
 type KeyValue<T = string | number | boolean> = {
   [k: string]: T,
@@ -75,6 +75,9 @@ export async function performE2E<const EnvName extends string = never>(config: C
       // import collection
     } else {
       const ctx = await createCollectionV2(page, sidebar, collection.name, index !== 0, collection.format)
+      if (index === 0) {
+        useCollection({ page, sidebar, collection: collection.name, requests: collection.requests.map((request) => request.name) })
+      }
 
       for (const folder of collection.folders ?? []) {
         await createFolder(sidebar, folder.parent ?? collection.name, folder.name, !folder.parent)
@@ -134,15 +137,10 @@ export function runLifecycle(title: string, suites: LifecycleSuite[], { timeoutM
     for (const { desc, workspace, run } of suites) {
       await test.step(desc, async () => {
         await performE2E(workspace, page);
-
-        const sidebar = await openBrunoSidebar(page);
-        const [collection] = workspace.collections.filter((entry) => typeof entry !== 'string');
-
-        useCollection({ page, sidebar, collection: collection.name, requests: collection.requests.map((request) => request.name) });
         await run();
 
         await runCommand(page, 'View: Close All Editors');
-        await removeCollection(page, sidebar, collection.name);
+        await removeActiveCollection();
       });
     }
 

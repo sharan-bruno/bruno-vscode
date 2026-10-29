@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, reopenRequestAuth, expectAuthMode } from '../../utils/page/actions';
 
+export const desc = 'Every auth type chosen on a request is still selected after closing and reopening it';
+
 // `shown` is how the selected mode is spelled afterwards.
 const authTypes = [
   { mode: 'digest', shown: 'Digest Auth' },
@@ -21,8 +23,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Every auth type chosen on a request is still selected after closing and reopening it';
 
 export async function run() {
   for (const { mode, shown } of authTypes) {

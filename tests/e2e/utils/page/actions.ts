@@ -1777,6 +1777,11 @@ export async function setAuth(target: string, mode: AuthMode, fields: AuthFields
   }
 }
 
+/** Removes the collection the lifecycle suite acted on. */
+export async function removeActiveCollection(): Promise<void> {
+  await removeCollection(page, sidebar, collectionName);
+}
+
 // Closes the request's tab, opens it again from the sidebar and shows its Auth tab.
 export async function reopenRequestAuth(request: string): Promise<void> {
   const ctx = currentCollection;

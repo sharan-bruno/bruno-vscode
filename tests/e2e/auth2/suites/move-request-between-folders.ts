@@ -2,6 +2,8 @@ import { expect } from '@playwright/test';
 import { dragItemIntoFolder, expandFolder, setAuth, expectInherited, page, sidebar } from '../../utils/page/actions';
 import { Workspace } from '../../e2e-helper';
 
+export const desc = 'Moving a request to another folder changes where it inherits auth from';
+
 export const workspace: Workspace = {
   collections: [
     {
@@ -17,8 +19,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Moving a request to another folder changes where it inherits auth from';
 
 export async function run() {
   await setAuth('move-folder-a', 'basic');

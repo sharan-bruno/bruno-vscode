@@ -1,6 +1,8 @@
 import { Workspace } from '../../e2e-helper';
 import { setAuth, expectInherited, sendAndExpect, collectionName } from '../../utils/page/actions';
 
+export const desc = 'Collection-level Bearer Token is inherited by a request, and removed with No Auth';
+
 export const workspace: Workspace = {
   collections: [
     {
@@ -12,8 +14,6 @@ export const workspace: Workspace = {
     },
   ],
 };
-
-export const desc = 'Collection-level Bearer Token is inherited by a request, and removed with No Auth';
 
 export async function run() {
   await setAuth('inherit-bearer-request', 'inherit');
