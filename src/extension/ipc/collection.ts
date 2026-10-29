@@ -81,6 +81,22 @@ const uiStateSnapshotStore = new UiStateSnapshotStore();
 
 let sidebarWebviewGetter: (() => vscode.Webview | undefined) | null = null;
 
+// Close any editor tab that is open on this file, e.g. before the file is deleted or moved away from its path.
+async function closeTabsForPath(filePath: string): Promise<void> {
+  const uri = vscode.Uri.file(filePath);
+  for (const tabGroup of vscode.window.tabGroups.all) {
+    for (const tab of tabGroup.tabs) {
+      const tabInput = tab.input;
+      if (tabInput && typeof tabInput === 'object' && 'uri' in tabInput) {
+        const tabUri = (tabInput as { uri: vscode.Uri }).uri;
+        if (tabUri.fsPath === uri.fsPath) {
+          await vscode.window.tabGroups.close(tab);
+        }
+      }
+    }
+  }
+}
+
 export function setSidebarWebviewGetter(getter: () => vscode.Webview | undefined): void {
   sidebarWebviewGetter = getter;
 }
@@ -798,21 +814,6 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
 
       validatePathIsInsideCollection(itemPath);
 
-      const closeTabsForPath = async (filePath: string) => {
-        const uri = vscode.Uri.file(filePath);
-        for (const tabGroup of vscode.window.tabGroups.all) {
-          for (const tab of tabGroup.tabs) {
-            const tabInput = tab.input;
-            if (tabInput && typeof tabInput === 'object' && 'uri' in tabInput) {
-              const tabUri = (tabInput as { uri: vscode.Uri }).uri;
-              if (tabUri.fsPath === uri.fsPath) {
-                await vscode.window.tabGroups.close(tab);
-              }
-            }
-          }
-        }
-      };
-
       // path.resolve converts posixified paths (from Redux) back to native separators
       // so the UID matches what was generated when the collection was first opened
       const collectionUid = generateUidBasedOnHash(path.resolve(collectionPath));
@@ -873,6 +874,10 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
       const sourceDirname = path.dirname(sourcePathname);
       const pathnamesBefore = await getPaths(sourcePathname);
       const pathnamesAfter = pathnamesBefore?.map((p) => p?.replace(sourceDirname, targetDirname));
+      // An editor left open on a moved file would point at a path that no longer exists
+      for (const pathname of pathnamesBefore ?? []) {
+        await closeTabsForPath(pathname);
+      }
       await copyPath(sourcePathname, targetDirname);
       await removePath(sourcePathname);
       // Move the request uids of the previous file/folders to the new file/folder items
@@ -929,6 +934,7 @@ const registerCollectionIpc = (watcher: CollectionWatcherInterface): void => {
       const finalContent = await stringifyRequest(parsedRequest, { format: targetFormat });
 
       await writeFile(targetPathname, finalContent);
+      await closeTabsForPath(sourcePathname);
       await removePath(sourcePathname);
 
       moveRequestUid(sourcePathname, targetPathname);

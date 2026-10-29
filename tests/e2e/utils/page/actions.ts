@@ -5,6 +5,7 @@ import { buildCommonLocators } from './locators';
 import { GRPC_SERVER_URL } from '../urls';
 import { Context } from '../../context';
 import { VSCodeFixture, VSCodeOptions } from '../fixtures';
+import type { AuthFields, AuthMode, LifecycleCtx, TimelineCheck } from '../../e2e-helper';
 
 // The editor pane currently in focus (request, folder settings or collection settings).
 export const activeEditor = (page: Page): FrameLocator =>
@@ -1182,6 +1183,11 @@ export async function createFolder(
   await expect(
     buildCommonLocators(sidebar).sidebar.collectionItem(folderName)
   ).toBeVisible({ timeout: 15_000 });
+
+  // The "Folder created" toast floats over the sidebar rows and blocks hover/click on them until it fades. Toasts pause
+  // while the mouse is over them, and the mouse is still on the row that was just hovered, so move it off first.
+  // await sidebar.page().mouse.move(400, 5);
+  // await expect(sidebar.getByText('Folder created')).toHaveCount(0);
 }
 
 /** Pick an auth mode by its dropdown label, e.g. 'Bearer Token', in the auth pane that is open. */
@@ -1654,4 +1660,157 @@ export async function exportCollectionV2(page: Page, sidebar: Frame, ctx: Contex
   // verify the exported file on disk
   await expect.poll(() => fs.existsSync(exportPath), { message: `${exportPath} should be exported` }).toBe(true);
   return JSON.parse(fs.readFileSync(exportPath, 'utf8'));
+}
+
+// ---- Lifecycle actions -------------------------------------------------------------------------------------------
+// Actions on a collection's folders and requests. They act on the collection of the lifecycle suite that is running.
+
+/** The text of each auth mode in the auth dropdown. */
+export const authModeLabels: Record<AuthMode, string> = {
+  inherit: 'Inherit',
+  none: 'No Auth',
+  basic: 'Basic Auth',
+  bearer: 'Bearer Token',
+  digest: 'Digest Auth',
+  ntlm: 'NTLM Auth',
+  wsse: 'WSSE Auth',
+  apikey: 'API Key',
+  awsv4: 'AWS Sig v4'
+};
+
+// The collection the running suite acts on, and the same details as plain values a suite can import.
+let currentCollection: LifecycleCtx;
+export let page: Page;
+export let sidebar: Frame;
+export let collectionName = '';
+
+/** Called by the lifecycle runner before each suite. */
+export function useCollection(ctx: LifecycleCtx): void {
+  currentCollection = ctx;
+  page = ctx.page;
+  sidebar = ctx.sidebar;
+  collectionName = ctx.collection;
+}
+
+// Opens the Timeline tab of the active request, expands its latest entry and runs the text checks on it.
+export async function checkLatestTimelineEntry(page: Page, check: TimelineCheck) {
+  const locators = buildCommonLocators(activeEditor(page));
+  await selectResponsePaneTab(page, 'Timeline');
+  const timelineItem = locators.timeline.lastItem();
+  await locators.timeline.itemHeader(timelineItem).click();
+  const requestPanel = locators.timeline.requestPanel(timelineItem);
+  await expect(requestPanel).toBeVisible();
+
+  if (check === true) return;
+
+  for (const text of check.contains ?? []) {
+    await expect(requestPanel).toContainText(text);
+  }
+  for (const text of check.notContains ?? []) {
+    await expect(requestPanel).not.toContainText(text);
+  }
+}
+
+// Clicks the request in the sidebar until its editor is really the active one. openRequest can return as soon as
+// any request webview exists, and a click on a row that just moved or re-rendered may not open anything.
+// A row that still points at the old path of a moved file opens "The editor could not be opened because the file
+// was not found", so a failed attempt closes that editor and tries again once the sidebar has refreshed.
+async function openRequestEditor({ page, sidebar, collection }: Pick<LifecycleCtx, 'page' | 'sidebar' | 'collection'>, request: string) {
+  await expect(async () => {
+    await openRequest(page, sidebar, collection, request);
+    try {
+      await expect(activeEditor(page).locator('.request-pane')).toBeVisible({ timeout: 3000 });
+    } catch (error) {
+      await runCommand(page, 'View: Close All Editors');
+      throw error;
+    }
+  }).toPass({ timeout: 25_000 });
+}
+
+// Opens the auth pane of the target: collection settings, folder settings or the request's Auth tab.
+async function openAuthPane({ page, sidebar, collection, requests }: LifecycleCtx, target: string) {
+  const sidebarLocators = buildCommonLocators(sidebar).sidebar;
+  const locators = buildCommonLocators(activeEditor(page));
+
+  if (target === collection) {
+    await sidebarLocators.collectionName(collection).click();
+    await locators.paneTabs.collectionSettingsTab('auth').click();
+  } else if (requests.includes(target)) {
+    await openRequestEditor({ page, sidebar, collection }, target);
+    await selectRequestPaneTab(page, 'Auth');
+  } else {
+    await sidebarLocators.folder(target).click();
+    await locators.paneTabs.folderSettingsTab('auth').click();
+  }
+}
+
+export async function setAuth(target: string, mode: AuthMode, fields: AuthFields = {}): Promise<void> {
+  const ctx = currentCollection;
+  const { page, collection, requests } = ctx;
+  const locators = buildCommonLocators(activeEditor(page));
+
+  await expandCollection(ctx.sidebar, collection);
+  await openAuthPane(ctx, target);
+  await selectAuthMode(page, authModeLabels[mode]);
+  const level = target === collection ? 'collection' : 'request';
+  if (fields.username !== undefined) await setCodeMirrorValue(page, locators.auth.basicUsernameEditor(level), fields.username);
+  if (fields.password !== undefined) await setCodeMirrorValue(page, locators.auth.basicPasswordEditor(level), fields.password);
+  if (fields.token !== undefined) await setCodeMirrorValue(page, locators.auth.bearerTokenEditor(level), fields.token);
+  if (fields.accessKeyId !== undefined) await setCodeMirrorValue(page, locators.auth.awsAccessKeyIdEditor(), fields.accessKeyId);
+  if (fields.secretAccessKey !== undefined) await setCodeMirrorValue(page, locators.auth.awsSecretAccessKeyEditor(), fields.secretAccessKey);
+  if (fields.service !== undefined) await setCodeMirrorValue(page, locators.auth.awsServiceEditor(), fields.service);
+  if (fields.region !== undefined) await setCodeMirrorValue(page, locators.auth.awsRegionEditor(), fields.region);
+  // The API Key fields have no test-ids, so they are found by their labels
+  const editor = activeEditor(page);
+  if (fields.key !== undefined) await setCodeMirrorValue(page, editor.locator('label:text-is("Key") + .single-line-editor-wrapper .CodeMirror'), fields.key);
+  if (fields.value !== undefined) await setCodeMirrorValue(page, editor.locator('label:text-is("Value") + .single-line-editor-wrapper .CodeMirror'), fields.value);
+  if (fields.addTo === 'query') {
+    await editor.locator('.auth-placement-selector').click();
+    await editor.locator('.dropdown-item').filter({ hasText: 'Query Param' }).click();
+  }
+  if (requests.includes(target)) {
+    await saveRequest(page);
+  } else {
+    await locators.saveButton().click();
+    // Collection and folder saves are async: wait for the toast so the next send doesn't use the old auth.
+    await expect(activeEditor(page).getByText(/Settings saved successfully/).last()).toBeVisible({ timeout: 5000 });
+  }
+}
+
+// Closes the request's tab, opens it again from the sidebar and shows its Auth tab.
+export async function reopenRequestAuth(request: string): Promise<void> {
+  const ctx = currentCollection;
+  await closeEditorTabIfOpen(ctx.page, request);
+  await openRequestEditor(ctx, request);
+  await selectRequestPaneTab(ctx.page, 'Auth');
+}
+
+export async function expectAuthMode(mode: string): Promise<void> {
+  await expect(buildCommonLocators(activeEditor(currentCollection.page)).auth.modeSelector()).toContainText(mode);
+}
+
+export async function expectInherited(target: string, from: string, mode: string): Promise<void> {
+  const ctx = currentCollection;
+  const locators = buildCommonLocators(activeEditor(ctx.page));
+
+  await expandCollection(ctx.sidebar, ctx.collection);
+  await openAuthPane(ctx, target);
+  await expect(locators.auth.inheritedMode().locator('..')).toContainText(`Auth inherited from ${from}:`);
+  await expect(locators.auth.inheritedMode()).toHaveText(mode);
+}
+
+export async function sendAndExpect(request: string, status?: number, timeline?: TimelineCheck): Promise<void> {
+  const ctx = currentCollection;
+  const locators = buildCommonLocators(activeEditor(ctx.page));
+
+  await expandCollection(ctx.sidebar, ctx.collection);
+  await openRequestEditor(ctx, request);
+  // Send through the visible editor: with several request tabs open, the frame openRequest returns can be a hidden one.
+  await sendRequest(activeEditor(ctx.page));
+  if (status !== undefined) {
+    await expect(locators.response.statusCode()).toContainText(String(status));
+  }
+  if (timeline) {
+    await checkLatestTimelineEntry(ctx.page, timeline);
+  }
 }
