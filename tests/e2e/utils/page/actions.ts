@@ -218,7 +218,7 @@ export async function createCollection(
 
   // Wait for the collection to appear in the sidebar list
   await expect(
-    sidebar.locator('[data-testid="sidebar-collection-row"]').filter({ hasText: name })
+    buildCommonLocators(sidebar).sidebar.collectionName(name)
   ).toBeVisible({ timeout: 15_000 });
 }
 
@@ -254,8 +254,8 @@ export async function cloneCollection(
   const sidebarLocators = buildCommonLocators(sidebar);
   const collectionRow = sidebarLocators.sidebar.collectionName(sourceName);
   await collectionRow.hover();
-  await buildCommonLocators(collectionRow).sidebar.actionsMenu().click();
-  await sidebarLocators.sidebar.actionMenuButton('clone').click();
+  await sidebarLocators.sidebar.actionsMenu(sourceName).click();
+  await sidebarLocators.sidebar.actionMenuButton(sourceName, 'clone').click();
 
   const editor = await waitForNewWebviewFrame(page, sidebar);
   const cloneForm = buildCommonLocators(editor).cloneCollection;
@@ -380,13 +380,13 @@ export async function openNewRequestPanel(
     await expandFolder(sidebar, parentName);
     const folderRow = locators.sidebar.folder(parentName);
     await folderRow.hover();
-    await buildCommonLocators(folderRow).sidebar.itemMenu().click();
-    await locators.sidebar.itemMenuAction('new-request').click();
+    await locators.sidebar.itemMenu(parentName).click();
+    await locators.sidebar.itemMenuAction(parentName, 'new-request').click();
   } else {
     const collectionRow = locators.sidebar.collectionName(parentName);
     await collectionRow.hover();
-    await buildCommonLocators(collectionRow).sidebar.actionsMenu().click();
-    await locators.sidebar.actionsItem('new-request').click();
+    await locators.sidebar.actionsMenu(parentName).click();
+    await locators.sidebar.actionsItem(parentName, 'new-request').click();
   }
 
   // From a folder other webviews are usually open, so look for the New Request panel specifically.
@@ -488,7 +488,7 @@ export async function createRequest(
 
   // Wait for the request to appear in the sidebar
   await expect(
-    sidebar.locator('[data-testid="sidebar-collection-item-row"]').filter({ hasText: requestName })
+    buildCommonLocators(sidebar).sidebar.collectionItem(requestName)
   ).toBeVisible({ timeout: 15_000 });
 }
 
@@ -598,13 +598,13 @@ export async function addRequestHeader(
 ): Promise<void> {
   await openRequestTab(editor, 'headers');
 
-  const rows = buildCommonLocators(editor).editableTable.rows();
+  const rows = buildCommonLocators(editor).editableTable.rows('request-headers');
   await expect(rows.first()).toBeVisible({ timeout: 10_000 });
   const emptyRowIdx = (await rows.count()) - 1; // the trailing empty row
-  const row = buildCommonLocators(rows.nth(emptyRowIdx)).editableTable;
+  const table = buildCommonLocators(editor.getByTestId('request-headers')).editableTable;
 
-  await setCodeMirrorValue(page, row.columnNameEditor(), name);
-  await setCodeMirrorValue(page, row.columnValueEditor(), value);
+  await setCodeMirrorValue(page, table.columnNameEditor(emptyRowIdx), name);
+  await setCodeMirrorValue(page, table.columnValueEditor(emptyRowIdx), value);
 }
 
 /**
@@ -619,16 +619,16 @@ export async function addQueryParam(
 ): Promise<void> {
   await openRequestTab(editor, 'params');
 
-  const rows = buildCommonLocators(editor).editableTable.firstTableRows();
+  const rows = buildCommonLocators(editor).editableTable.rows('query-params');
   await expect(rows.first()).toBeVisible({ timeout: 10_000 });
   const emptyRowIdx = (await rows.count()) - 1;
-  const row = buildCommonLocators(rows.nth(emptyRowIdx)).editableTable;
+  const table = buildCommonLocators(editor.getByTestId('query-params')).editableTable;
 
-  await row.columnNameInput().fill(name);
-  await setCodeMirrorValue(page, row.columnValueEditor(), value);
+  await table.columnNameInput(emptyRowIdx).fill(name);
+  await setCodeMirrorValue(page, table.columnValueEditor(emptyRowIdx), value);
 
   if (!enabled) {
-    await row.columnCheckbox().uncheck();
+    await table.columnCheckbox(emptyRowIdx).uncheck();
   }
 }
 
@@ -645,7 +645,7 @@ export async function setBearerToken(page: Page, editor: Frame, token: string): 
   await expect(bearerItem).toBeVisible({ timeout: 5_000 });
   await bearerItem.click();
 
-  await setCodeMirrorValue(page, locators.auth.bearerTokenEditor(), token);
+  await setCodeMirrorValue(page, locators.auth.bearerTokenEditor('request'), token);
 }
 
 /**
@@ -677,10 +677,10 @@ export async function addRequestVar(
   const rows = buildCommonLocators(editor).varsTable.rows('request', 'req');
   await expect(rows.first()).toBeVisible({ timeout: 10_000 });
   const emptyRowIdx = (await rows.count()) - 1;
-  const row = buildCommonLocators(rows.nth(emptyRowIdx)).editableTable;
+  const table = buildCommonLocators(editor.getByTestId('request-vars-req')).editableTable;
 
-  await row.columnNameInput().fill(name);
-  await setCodeMirrorValue(page, row.columnValueEditor(), value);
+  await table.columnNameInput(emptyRowIdx).fill(name);
+  await setCodeMirrorValue(page, table.columnValueEditor(emptyRowIdx), value);
 }
 
 /**
@@ -774,9 +774,7 @@ export async function expandCollection(
   sidebar: Frame,
   collectionName: string
 ): Promise<void> {
-  const collectionRow = sidebar
-    .locator('[data-testid="sidebar-collection-row"]')
-    .filter({ hasText: collectionName });
+  const collectionRow = buildCommonLocators(sidebar).sidebar.collectionName(collectionName);
 
   // The chevron SVG has class "chevron-icon" and is rotated 90° when expanded.
   // If the chevron does NOT have the rotate-90 class, the collection is collapsed.
@@ -792,7 +790,7 @@ export async function expandCollection(
 
 export async function expandFolder(sidebar: Frame, folderName: string): Promise<void> {
   const folderRow = buildCommonLocators(sidebar).sidebar.collectionItem(folderName);
-  const chevron = buildCommonLocators(folderRow).sidebar.folderChevron();
+  const chevron = buildCommonLocators(sidebar).sidebar.folderChevron(folderName);
   const isExpanded = await chevron.evaluate((el) => el.classList.contains('rotate-90'));
   if (!isExpanded) {
     await chevron.click();
@@ -811,7 +809,21 @@ export async function dragItemIntoFolder(
   await expect(folderRow).toBeVisible();
 
   // steps gives the sidebar a real drag; a single jump does not start one.
-  await itemRow.locator('.item-name').dragTo(folderRow, { steps: 15 });
+  await locators.sidebar.collectionItemLabel(itemName).dragTo(folderRow, { steps: 15 });
+}
+
+export async function dragItemAboveOrBelow(
+  sidebar: Frame,
+  itemName: string,
+  targetName: string,
+  position: 'above' | 'below'
+): Promise<void> {
+  const locators = buildCommonLocators(sidebar);
+  const itemRow = locators.sidebar.collectionItem(itemName);
+  const targetRow = locators.sidebar.collectionItem(targetName);
+  const targetPosition = { x: 50, y: position === 'above' ? 3 : 22 };
+
+  await locators.sidebar.collectionItemLabel(itemName).dragTo(targetRow, { targetPosition, steps: 15 });
 }
 
 /**
@@ -822,9 +834,7 @@ export async function collapseCollection(
   sidebar: Frame,
   collectionName: string
 ): Promise<void> {
-  const collectionRow = sidebar
-    .locator('[data-testid="sidebar-collection-row"]')
-    .filter({ hasText: collectionName });
+  const collectionRow = buildCommonLocators(sidebar).sidebar.collectionName(collectionName);
 
   const chevron = collectionRow.locator('svg.chevron-icon');
   const isExpanded = await chevron.evaluate(
@@ -899,9 +909,7 @@ async function openRequestByMarker(
   await expandCollection(sidebar, collectionName);
 
   // Wait for the request item to be visible inside the expanded tree
-  const requestRow = sidebar
-    .locator('[data-testid="sidebar-collection-item-row"]')
-    .filter({ hasText: requestName });
+  const requestRow = buildCommonLocators(sidebar).sidebar.collectionItem(requestName);
   await expect(requestRow).toBeVisible({ timeout: 10_000 });
 
   // Click the request to open it in the editor
@@ -955,17 +963,17 @@ export async function addCollectionHeader(
 ): Promise<void> {
   await openRequestPaneTab(settings, 'Headers');
 
-  const rows = buildCommonLocators(settings).editableTable.rows();
+  const rows = buildCommonLocators(settings).editableTable.rows('collection-headers');
   await expect(rows.first()).toBeVisible({ timeout: 10_000 });
   const emptyRowIdx = (await rows.count()) - 1;
-  const row = buildCommonLocators(rows.nth(emptyRowIdx)).editableTable;
+  const table = buildCommonLocators(settings.getByTestId('collection-headers')).editableTable;
 
-  await setCodeMirrorValue(page, row.columnNameEditor(), name);
-  await setCodeMirrorValue(page, row.columnValueEditor(), value);
+  await setCodeMirrorValue(page, table.columnNameEditor(emptyRowIdx), name);
+  await setCodeMirrorValue(page, table.columnValueEditor(emptyRowIdx), value);
 }
 
-export async function saveCollectionSettings(settings: Frame): Promise<void> {
-  const saveButton = buildCommonLocators(settings).collectionSettings.saveButton();
+export async function saveCollectionSettings(settings: Frame, tab: string): Promise<void> {
+  const saveButton = buildCommonLocators(settings).collectionSettings.saveButton(tab);
   await expect(saveButton).toBeVisible();
   await saveButton.click();
 }
@@ -1084,16 +1092,14 @@ export async function removeCollection(
   sidebar: Frame,
   collectionName: string
 ): Promise<void> {
-  const collectionRow = sidebar
-    .locator('[data-testid="sidebar-collection-row"]')
-    .filter({ hasText: collectionName });
+  const collectionRow = buildCommonLocators(sidebar).sidebar.collectionName(collectionName);
   await collectionRow.hover();
 
   // Mock the confirmation dialog before triggering removal
   await mockConfirmRemove(sidebar);
 
   // Open the 3-dot context menu
-  await collectionRow.locator('[data-testid="collection-actions"]').click();
+  await buildCommonLocators(sidebar).sidebar.actionsMenu(collectionName).click();
 
   // Click "Remove" from the dropdown
   await sidebar.locator('[role="menuitem"]').filter({ hasText: 'Remove' }).click();
@@ -1160,13 +1166,13 @@ export async function createFolder(
     await expandCollection(sidebar, parentName);
     const collectionRow = locators.sidebar.collectionName(parentName);
     await collectionRow.hover();
-    await buildCommonLocators(collectionRow).sidebar.actionsMenu().click();
-    await locators.sidebar.actionsItem('new-folder').click();
+    await locators.sidebar.actionsMenu(parentName).click();
+    await locators.sidebar.actionsItem(parentName, 'new-folder').click();
   } else {
     const folderRow = locators.sidebar.folder(parentName);
     await folderRow.hover();
-    await buildCommonLocators(folderRow).sidebar.itemMenu().click();
-    await locators.sidebar.itemMenuAction('new-folder').click();
+    await locators.sidebar.itemMenu(parentName).click();
+    await locators.sidebar.itemMenuAction(parentName, 'new-folder').click();
   }
 
   if (!isCollection) {
@@ -1174,7 +1180,7 @@ export async function createFolder(
   }
 
   await expect(
-    sidebar.locator('[data-testid="sidebar-collection-item-row"]').filter({ hasText: folderName }).first()
+    buildCommonLocators(sidebar).sidebar.collectionItem(folderName)
   ).toBeVisible({ timeout: 15_000 });
 }
 
@@ -1250,16 +1256,14 @@ export async function deleteItem(
   sidebar: Frame,
   itemName: string
 ): Promise<void> {
-  const itemRow = sidebar
-    .locator('[data-testid="sidebar-collection-item-row"]')
-    .filter({ hasText: itemName });
+  const itemRow = buildCommonLocators(sidebar).sidebar.collectionItem(itemName);
   await itemRow.hover();
 
   // Mock the confirmation dialog
   await mockConfirmDelete(sidebar);
 
   // Open the context menu (3-dot icon on the item)
-  await itemRow.locator('[data-testid="collection-item-menu"]').click();
+  await buildCommonLocators(sidebar).sidebar.itemMenu(itemName).click();
 
   // Click "Delete"
   await sidebar.locator('[role="menuitem"]').filter({ hasText: 'Delete' }).click();
@@ -1280,7 +1284,7 @@ export async function createTransientRequest(
   const locators = buildCommonLocators(sidebar);
   await locators.sidebar.collectionName(collectionName).hover();
   await locators.newRequestMenu.addButton(collectionName).click();
-  await locators.newRequestMenu.option(type).click();
+  await locators.newRequestMenu.option(collectionName, type).click();
 }
 
 /**
@@ -1317,11 +1321,9 @@ export async function closeEditorTabIfOpen(page: Page, title: string): Promise<v
  * @param itemName - Name of the request/folder to copy
  */
 export async function copyItem(sidebar: Frame, itemName: string): Promise<void> {
-  const itemRow = sidebar
-    .locator('[data-testid="sidebar-collection-item-row"]')
-    .filter({ hasText: itemName });
+  const itemRow = buildCommonLocators(sidebar).sidebar.collectionItem(itemName);
   await itemRow.hover();
-  await itemRow.locator('[data-testid="collection-item-menu"]').click();
+  await buildCommonLocators(sidebar).sidebar.itemMenu(itemName).click();
   await sidebar.locator('[role="menuitem"]').filter({ hasText: /^Copy$/ }).click();
 }
 
@@ -1333,11 +1335,9 @@ export async function copyItem(sidebar: Frame, itemName: string): Promise<void> 
  * @param collectionName - Name of the destination collection
  */
 export async function pasteIntoCollection(sidebar: Frame, collectionName: string): Promise<void> {
-  const collectionRow = sidebar
-    .locator('[data-testid="sidebar-collection-row"]')
-    .filter({ hasText: collectionName });
+  const collectionRow = buildCommonLocators(sidebar).sidebar.collectionName(collectionName);
   await collectionRow.hover();
-  await collectionRow.locator('[data-testid="collection-actions"]').click();
+  await buildCommonLocators(sidebar).sidebar.actionsMenu(collectionName).click();
   await sidebar.locator('[role="menuitem"]').filter({ hasText: /^Paste$/ }).click();
 }
 
@@ -1356,7 +1356,7 @@ export async function openRequestPaneTab(editor: Frame, tabName: string): Promis
     return;
   }
   await editor.locator('.more-tabs').click();
-  await editor.locator(`[data-testid="menu-dropdown-${tabName.toLowerCase()}"]`).click();
+  await editor.getByTestId(`request-pane-tabs-menu-${tabName.toLowerCase()}`).click();
   await expect(directTab).toBeVisible({ timeout: 15_000 });
 }
 
@@ -1385,8 +1385,8 @@ export async function openCollectionRunner(
   await row.waitFor({ state: 'visible', timeout: 10_000 });
   // The ellipse menu is hidden until the collection row is hovered.
   await row.hover();
-  await menu.sidebar.collectionMenuOptions(collectionName).click();
-  await menu.sidebar.runCollectionButton().click();
+  await menu.sidebar.actionsMenu(collectionName).click();
+  await menu.sidebar.actionsItem(collectionName, 'run').click();
 
   const runner = await getWebviewFrame(
     page,
@@ -1530,24 +1530,20 @@ const requestTypeIdMap = {
 
 export async function createRequestV2(page: Page, _sidebar: Frame, ctx: Context, collectionName: string, type: RequestType, method: RequestMethod = 'GET') {
   const sidebar = _sidebar ?? await openBrunoSidebar(page);
+  const newRequestMenu = buildCommonLocators(sidebar).newRequestMenu;
   await sidebar.getByText(collectionName).hover()
-
-  // anti-pattern. test-id should not point to more than one element
-  const createNewRequestButton = sidebar.getByTestId('collection-new-request').filter({ visible: true })
-  await createNewRequestButton.click();
-
-  await sidebar.getByTestId(`collection-new-request-new-${requestTypeIdMap[type]}`).click();
+  await newRequestMenu.addButton(collectionName).click();
+  await newRequestMenu.option(collectionName, requestTypeIdMap[type]).click();
 
   const webview = await getWebviewByTitle(page, 'Untitled 1');
   expect(webview).toBeTruthy();
 
-  // anti-pattern: test-id should only point to a single element
-  const requestTypeDropdown = webview.getByTestId('menu-dropdown').first();
+  const requestTypeDropdown = webview.getByTestId('request-method');
   if ((await requestTypeDropdown.getAttribute('aria-expanded')) === 'false') {
     await requestTypeDropdown.click()
   }
 
-  await webview.getByTestId(`menu-dropdown-${method.toLowerCase()}`).click()
+  await webview.getByTestId(`request-method-${method.toLowerCase()}`).click()
 
   return webview;
 }
@@ -1614,7 +1610,7 @@ export async function deleteRequestV2(page: Page, sidebar: Frame, ctx: Context, 
 
   const requestRow = buildCommonLocators(sidebar).sidebar.collectionItem(name);
   await requestRow.hover();
-  await requestRow.getByTestId('collection-item-menu').click();
+  await buildCommonLocators(requestRow).sidebar.itemMenu(name).click();
   await sidebar.getByRole('menuitem', { name: 'Delete' }).click();
 
   // Modal confirmation from `vscode.window.showWarningMessage(..., { modal: true }, 'Delete')`
