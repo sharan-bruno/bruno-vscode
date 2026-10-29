@@ -7,7 +7,7 @@ import {
   createFolder,
   expandFolder,
   openTransientRequest,
-  pressSaveShortcut,
+  saveFileByKeyboard,
   setRequestUrl
 } from '../utils/page/actions';
 import { buildCommonLocators } from '../utils/page/locators';
@@ -19,9 +19,6 @@ test.describe('Save a transient request into a folder', () => {
     const folderName = 'folder-1';
     const requestName = 'request-1';
     const sidebar = await openBrunoSidebar(page);
-    const sidebarLocators = buildCommonLocators(sidebar);
-    const workbench = buildCommonLocators(page).workbench;
-    const quickInputWidget = workbench.quickInput();
 
     await test.step('Create a collection with a folder', async () => {
       await createCollection(page, sidebar, collectionName, tmpDir);
@@ -34,10 +31,13 @@ test.describe('Save a transient request into a folder', () => {
     });
 
     await test.step('Save with cmd+s and pick the folder in the save picker', async () => {
-      await pressSaveShortcut(page);
+      const workbench = buildCommonLocators(page).workbench;
+      const quickInputWidget = workbench.quickInput();
 
-      await workbench.quickInputItem(folderName).click();
-      await workbench.quickInputItem('Select this folder').click();
+      await saveFileByKeyboard(page);
+
+      await workbench.getQuickInputByLabel(folderName).click();
+      await workbench.getQuickInputByLabel('Select this folder').click();
 
       await expect(quickInputWidget).toContainText('Enter a name for the request');
       await workbench.quickInputBox().fill(requestName);
@@ -50,6 +50,8 @@ test.describe('Save a transient request into a folder', () => {
     });
 
     await test.step('Verify the request is visible under the folder in the sidebar', async () => {
+      const sidebarLocators = buildCommonLocators(sidebar);
+
       await expandFolder(sidebar, folderName);
       await expect(sidebarLocators.sidebar.collectionItem(requestName)).toBeVisible({ timeout: 10_000 });
     });
